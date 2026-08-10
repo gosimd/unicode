@@ -3,7 +3,6 @@
 package utf8
 
 import (
-	"math/bits"
 	"runtime"
 	"simd/archsimd"
 	stdutf8 "unicode/utf8"
@@ -64,7 +63,7 @@ func runeCountSIMD(p []byte) (int, bool) {
 			if !allZero(errors) {
 				return 0, false
 			}
-			count += simdBlockSize - continuationCount(chunk0) - continuationCount(chunk1) - continuationCount(chunk2) - continuationCount(chunk3)
+			count += simdBlockSize - continuationCountBlock(chunk0, chunk1, chunk2, chunk3)
 			prev = chunk3
 			incomplete = incompleteSIMDChunk(chunk3)
 		}
@@ -102,9 +101,4 @@ func runeCountSIMD(p []byte) (int, bool) {
 		}
 	}
 	return count, state.complete()
-}
-
-func continuationCount(chunk archsimd.Uint8x16) int {
-	lanes := maskBits(continuationMask(chunk)).ReshapeToUint64s()
-	return bits.OnesCount64(uint64(lanes.GetElem(0)))/8 + bits.OnesCount64(uint64(lanes.GetElem(1)))/8
 }

@@ -158,13 +158,6 @@ func hasClassFlag(flags archsimd.Uint8x16, flag byte) archsimd.Mask8x16 {
 	return flags.And(archsimd.BroadcastUint8x16(flag)).NotEqual(archsimd.Uint8x16{})
 }
 
-func highNibbles(chunk archsimd.Uint8x16) archsimd.Uint8x16 {
-	return chunk.ReshapeToUint16s().
-		ShiftAllRight(4).
-		ReshapeToUint8s().
-		And(archsimd.BroadcastUint8x16(0x0f))
-}
-
 func lowNibbles(chunk archsimd.Uint8x16) archsimd.Uint8x16 {
 	return chunk.And(archsimd.BroadcastUint8x16(0x0f))
 }

@@ -42,6 +42,7 @@ allocate.
 | --- | --- |
 | `valid_simd.go` | SIMD `Valid` and `ValidString` entry points. |
 | `rune_count_simd.go` | SIMD `RuneCount`, `RuneCountInString`, and counting loop. |
+| `continuation_count_*.go` | Architecture-specific continuation-mask reduction for rune counting. |
 | `utf8_simd_common.go` | Shared chunk sizes, byte classification, scalar tail state, and masks. |
 | `valid_predicates_arm64.go` | NEON fused validation predicate and incomplete-sequence carry. |
 | `ascii_arm64.go` | NEON ASCII detector using a signed minimum. |
