@@ -38,7 +38,7 @@ bench-utf8-simd:
 
 bench-utf8-report:
 	mkdir -p $(dir $(VALID_BENCH_OUTPUT))
-	GOEXPERIMENT=$(SIMD_GOEXPERIMENT) $(GO) test -run='^$$' -bench='^BenchmarkValid$$' -benchmem -benchtime=$(BENCH_TIME) -count=$(BENCH_COUNT) $(UTF8_PKG) > $(VALID_BENCH_OUTPUT)
+	GOEXPERIMENT=$(SIMD_GOEXPERIMENT) $(GO) test -run='^$$' -bench='^BenchmarkValidSIMDUTF8Table$$' -benchmem -benchtime=$(BENCH_TIME) -count=$(BENCH_COUNT) $(UTF8_PKG) > $(VALID_BENCH_OUTPUT)
 	$(GO) run ./cmd/benchreport -input $(VALID_BENCH_OUTPUT) -output $(VALID_BENCH_REPORT) -hardware "$(BENCH_HARDWARE)" -benchtime $(BENCH_TIME) -count $(BENCH_COUNT)
 
 profile:

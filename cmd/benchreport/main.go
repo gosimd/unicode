@@ -95,7 +95,7 @@ func parse(data []byte) ([]row, error) {
 	results := make(map[string]map[string][]float64)
 	for _, line := range strings.Split(string(data), "\n") {
 		fields := strings.Fields(line)
-		if len(fields) < 4 || !strings.HasPrefix(fields[0], "BenchmarkValid/") {
+		if len(fields) < 4 || !strings.HasPrefix(fields[0], "BenchmarkValidSIMDUTF8Table/") {
 			continue
 		}
 		parts := strings.Split(fields[0], "/")
@@ -117,7 +117,7 @@ func parse(data []byte) ([]row, error) {
 		results[name][implementation] = append(results[name][implementation], value)
 	}
 	if len(results) == 0 {
-		return nil, fmt.Errorf("no BenchmarkValid stdlib/simd results found")
+		return nil, fmt.Errorf("no BenchmarkValidSIMDUTF8Table stdlib/simd results found")
 	}
 
 	rows := make([]row, 0, len(results))

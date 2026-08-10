@@ -16,7 +16,20 @@ var (
 )
 
 func BenchmarkValid(b *testing.B) {
-	for _, input := range utf8SIMDUTF8BenchByteInputs() {
+	benchmarkValid(b, utf8BenchByteInputs())
+}
+
+// BenchmarkValidSIMDUTF8Table supplies the simdutf8-style input matrix used by
+// the generated two-column HTML report.
+func BenchmarkValidSIMDUTF8Table(b *testing.B) {
+	benchmarkValid(b, utf8SIMDUTF8BenchByteInputs())
+}
+
+func benchmarkValid(b *testing.B, inputs []struct {
+	name string
+	data []byte
+}) {
+	for _, input := range inputs {
 		b.Run(input.name, func(b *testing.B) {
 			b.Run("stdlib", func(b *testing.B) {
 				b.ReportAllocs()
