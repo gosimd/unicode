@@ -23,6 +23,9 @@ operations on UTF encodings. The first implementation target is UTF-8.
 - Do not add new exported API without updating README examples and tests.
 - If behavior intentionally differs from `unicode/utf8`, document the difference
   explicitly and add tests for it.
+- Keep [docs/API.md](docs/API.md) synchronized with the exported API. Document
+  whether an API is SIMD-accelerated; do not imply that `ValidString` uses the
+  byte-slice SIMD path unless that becomes true.
 
 ## Implementation Guidelines
 
@@ -30,6 +33,13 @@ operations on UTF encodings. The first implementation target is UTF-8.
 - Keep architecture-specific code behind build tags and small internal packages.
   Suggested package boundaries are `internal/simd` and `internal/cpu` when they
   become useful.
+- The current UTF-8 validator uses 16-byte chunks and 64-byte blocks. Preserve
+  cross-chunk continuation handling, vector incomplete-sequence carry, and the
+  scalar final-tail path when changing it. Update [docs/Valid.md](docs/Valid.md)
+  and [ARCHITECTURE.md](ARCHITECTURE.md) with material algorithm changes.
+- Keep ARM64 NEON and amd64 AVX2 predicates separate when their optimal
+  instruction sequences differ. amd64 without AVX2 must use the standard
+  library fallback.
 - Runtime CPU feature detection must fall back safely on unsupported machines.
 - Keep unsafe code isolated and justified. Do not use `unsafe` in public-facing
   code unless there is a clear measured need.
@@ -69,6 +79,9 @@ operations on UTF encodings. The first implementation target is UTF-8.
   - invalid input early and late in the buffer.
 - Include `-benchmem` when reporting benchmark results.
 - Performance changes must not weaken validation semantics.
+- Record hardware, Go version, exact benchmark input, and whether the result is
+  a fixed-cost or steady-state observation. Small ASCII buffers can favour the
+  SIMD path while large pure-ASCII buffers favour the standard library.
 
 ## Development Commands
 
