@@ -5,7 +5,8 @@ primarily algorithms that process text and text-adjacent encodings.
 `github.com/gosimd/unicode` is the UTF-encoding member of that collection: it
 provides correct, allocation-free SIMD implementations of UTF algorithms.
 
-The current focus is UTF-8 validation. UTF-16 algorithms are planned next.
+The current focus is UTF-8 validation. A UTF-16-compatible facade is available;
+SIMD UTF-16 algorithms are planned next.
 Other `gosimd` libraries will cover domains such as JSON and general encoding.
 
 ## Current UTF-8 implementation
@@ -39,6 +40,13 @@ without copying. `RuneCount` has the same semantics as `unicode/utf8.RuneCount`
 and uses a SIMD one-pass validator/counter for valid UTF-8 when supported. See
 [docs/API.md](docs/API.md) for the full current API and
 [docs/Valid.md](docs/Valid.md) for the SIMD algorithm.
+
+## UTF-16 compatibility package
+
+`github.com/gosimd/unicode/utf16` mirrors `unicode/utf16`, so an existing
+standard-library import can be replaced without changing call sites. Its
+current functions delegate to the standard library while UTF-16 SIMD paths are
+developed.
 
 ## Architecture and platform support
 

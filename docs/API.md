@@ -39,6 +39,20 @@ The compatibility surface is reviewed when the Go baseline changes. New
 exports in `unicode/utf8` are intentionally added here with matching tests;
 Go does not provide a package-wide re-export mechanism.
 
+## UTF-16 package
+
+Import:
+
+```go
+import "github.com/gosimd/unicode/utf16"
+```
+
+`github.com/gosimd/unicode/utf16` mirrors the Go 1.27rc1 `unicode/utf16` API:
+`IsSurrogate`, `DecodeRune`, `EncodeRune`, `RuneLen`, `Encode`, `AppendRune`,
+and `Decode`. It currently delegates every operation to the standard library;
+no UTF-16 SIMD path is selected yet. Compile-time function-type checks keep
+the compatibility surface synchronized with the standard-library baseline.
+
 ## Root package
 
 Import:
