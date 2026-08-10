@@ -85,13 +85,6 @@ func Valid(p []byte) bool {
 	return state.complete()
 }
 
-func allASCIIBlock(chunk0, chunk1, chunk2, chunk3 archsimd.Uint8x16) bool {
-	acc1 := chunk0.Or(chunk1)
-	acc2 := chunk2.Or(chunk3)
-	acc := acc1.Or(acc2)
-	return allZero(acc.And(archsimd.BroadcastUint8x16(0x80)))
-}
-
 const (
 	utf8ClassContinuation byte = 1 << iota
 	utf8ClassLead2
