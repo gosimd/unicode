@@ -4,6 +4,15 @@ package utf8
 
 import "simd/archsimd"
 
+var utf8IncompleteThresholds = [16]uint8{
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xef, 0xdf, 0xbf,
+}
+
+func incompleteSIMDChunk(chunk archsimd.Uint8x16) archsimd.Uint8x16 {
+	return chunk.SubSaturated(archsimd.LoadUint8x16Array(&utf8IncompleteThresholds))
+}
+
 func validateSIMDChunk(chunk archsimd.Uint8x16, prev archsimd.Uint8x16) archsimd.Uint8x16 {
 	prev1 := chunk.ConcatShiftBytesRight(prev, 15)
 	prev2 := chunk.ConcatShiftBytesRight(prev, 14)

@@ -28,8 +28,7 @@ func Valid(p []byte) bool {
 	const offset3 = 3 * simdChunkSize
 
 	prev := archsimd.Uint8x16{}
-
-	prefixComplete := true
+	incomplete := archsimd.Uint8x16{}
 	for len(p) >= simdBlockSize {
 		chunk0 := archsimd.LoadUint8x16(p)
 		chunk1 := archsimd.LoadUint8x16(p[offset1:])
@@ -37,7 +36,7 @@ func Valid(p []byte) bool {
 		chunk3 := archsimd.LoadUint8x16(p[offset3:])
 
 		if allASCIIBlock(chunk0, chunk1, chunk2, chunk3) {
-			if !prefixComplete {
+			if !allZero(incomplete) {
 				return false
 			}
 			prev = archsimd.Uint8x16{}
@@ -50,11 +49,7 @@ func Valid(p []byte) bool {
 			if !allZero(blockErrors) {
 				return false
 			}
-			state, ok := stateAfterSIMDChunk(chunk3)
-			if !ok {
-				return false
-			}
-			prefixComplete = state.complete()
+			incomplete = incompleteSIMDChunk(chunk3)
 		}
 		p = p[simdBlockSize:]
 	}
@@ -71,7 +66,12 @@ func Valid(p []byte) bool {
 		return false
 	}
 
-	state, ok := stateAfterSIMDChunk(prev)
+	incomplete = incompleteSIMDChunk(prev)
+	if len(p) == 0 {
+		return allZero(incomplete)
+	}
+
+	state, ok := stateForScalarTail(prev)
 	if !ok {
 		return false
 	}
@@ -190,7 +190,9 @@ func (s *utf8State) step(b byte, class byte) bool {
 	}
 }
 
-func stateAfterSIMDChunk(chunk archsimd.Uint8x16) (utf8State, bool) {
+// stateForScalarTail reconstructs the state needed to validate a final
+// non-SIMD tail. Full chunks use incompleteSIMDChunk instead.
+func stateForScalarTail(chunk archsimd.Uint8x16) (utf8State, bool) {
 	b13 := chunk.GetElem(13)
 	b14 := chunk.GetElem(14)
 	b15 := chunk.GetElem(15)

@@ -18,6 +18,11 @@ const (
 )
 
 var (
+	utf8IncompleteThresholds = [16]uint8{
+		0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+		0xff, 0xff, 0xff, 0xff, 0xff, 0xef, 0xdf, 0xbf,
+	}
+
 	// These tables fuse leading-byte validity, continuation validity, and the
 	// E0, ED, F0, and F4 boundary rules into a single error-bit vector.
 	utf8SpecialPrevHighTable = [16]uint8{
@@ -56,6 +61,13 @@ var (
 		utf8TooShort, utf8TooShort, utf8TooShort, utf8TooShort,
 	}
 )
+
+// incompleteSIMDChunk marks leading bytes in the final three lanes that do
+// not have enough following lanes in this chunk. SubSaturated yields zero for
+// all complete positions and a non-zero carry marker otherwise.
+func incompleteSIMDChunk(chunk archsimd.Uint8x16) archsimd.Uint8x16 {
+	return chunk.SubSaturated(archsimd.LoadUint8x16Array(&utf8IncompleteThresholds))
+}
 
 // validateSIMDChunk validates one 16-byte chunk using the algorithm described
 // by simdutf. It represents UTF-8 constraints as error bits, so the first
