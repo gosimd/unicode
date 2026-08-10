@@ -66,6 +66,26 @@ make profile-cpu
 make profile-mem
 ```
 
+### UTF-8 validation comparison
+
+`make bench-utf8-report BENCH_COUNT=10` runs the same valid-input matrix as
+[`rusticstuff/simdutf8`](https://github.com/rusticstuff/simdutf8/tree/main/bench):
+Latin, Cyrillic, Chinese, and emoji input, plus empty input and a 64 KiB input
+with an invalid first byte. The target sizes are 2 B, 8 B, 64 B, 512 B, 4 KiB,
+64 KiB, and 128 KiB. A multibyte sample may be up to three bytes larger than
+its target so that it ends at a valid UTF-8 boundary.
+
+It writes the raw Go benchmark output to `bench/valid.txt` and a standalone
+`bench/valid.html` table. The table has gosimd and standard-library columns;
+the smaller median `ns/op` is highlighted green. Both generated files are
+ignored by Git. `BENCH_TIME` defaults to `1s`; use a shorter value only for a
+quick smoke run, for example `BENCH_TIME=100ms BENCH_COUNT=3`. For a result
+you intend to publish, record the machine in the report too:
+
+```sh
+make bench-utf8-report BENCH_COUNT=10 BENCH_HARDWARE='Apple M4 Max, 16-core CPU'
+```
+
 For a direct SIMD test run:
 
 ```sh

@@ -17,6 +17,10 @@ coverage.*
 *.coverprofile
 profile.cov
 
+# Generated UTF-8 benchmark data and HTML comparison report
+bench/valid.txt
+bench/valid.html
+
 # Dependency directories (remove the comment below to include it)
 # vendor/
 
