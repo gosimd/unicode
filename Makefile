@@ -9,6 +9,7 @@ BENCH_COUNT ?= 1
 BENCH_TIME ?= 1s
 BENCH_HARDWARE ?= unspecified
 UTF8_PKG ?= ./utf8
+UTF16_PKG ?= ./utf16
 SIMD_GOEXPERIMENT ?= simd
 VALID_BENCH_OUTPUT ?= bench/valid.txt
 VALID_BENCH_REPORT ?= bench/valid.html
@@ -34,7 +35,10 @@ bench-utf8:
 	$(GO) test -run='^$$' -bench='$(BENCH)' -benchmem -count=$(BENCH_COUNT) $(UTF8_PKG)
 
 bench-utf8-simd:
-	GOEXPERIMENT=$(SIMD_GOEXPERIMENT) $(GO) test -run='^$$' -bench='BenchmarkRuneCount' -benchmem -count=$(BENCH_COUNT) $(UTF8_PKG)
+	GOEXPERIMENT=$(SIMD_GOEXPERIMENT) $(GO) test -run='^$$' -bench='$(BENCH)' -benchmem -count=$(BENCH_COUNT) $(UTF8_PKG)
+
+bench-utf16-simd:
+	GOEXPERIMENT=$(SIMD_GOEXPERIMENT) $(GO) test -run='^$$' -bench='$(BENCH)' -benchmem -count=$(BENCH_COUNT) $(UTF16_PKG)
 
 bench-utf8-report:
 	mkdir -p $(dir $(VALID_BENCH_OUTPUT))

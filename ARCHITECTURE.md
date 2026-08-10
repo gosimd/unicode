@@ -11,6 +11,11 @@ The root package, `github.com/gosimd/unicode`, remains a compact convenience
 facade for `Valid`, `ValidString`, and `RuneCount`. It delegates to the public
 UTF-8 package.
 
+The UTF-16 package, `github.com/gosimd/unicode/utf16`, mirrors
+`unicode/utf16`. Its `Decode` function selects a whole-buffer SIMD path on
+arm64 with NEON or amd64 with AVX2 when `GOEXPERIMENT=simd` is enabled. Its
+other functions are standard-library facades.
+
 ## Validation dispatch
 
 ```text
@@ -56,6 +61,17 @@ block boundaries. A final tail shorter than 16 bytes is validated with a small
 scalar state machine.
 
 See [docs/Valid.md](docs/Valid.md) for the detailed algorithm.
+
+## SIMD UTF-16 decoding
+
+`utf16.Decode` processes eight `uint16` code units at a time. A vector range
+test first rejects any chunk containing `0xD800..0xDFFF`. Clean chunks are
+zero-extended into `rune` values: NEON widens two groups of four lanes, while
+AVX2 widens all eight lanes. A chunk with any surrogate is decoded by the
+scalar state machine one code unit at a time, so a high surrogate at a vector
+boundary, valid pairs, and malformed sequences have the exact
+`unicode/utf16.Decode` result. Unsupported builds, including amd64 without
+AVX2, delegate to the standard library.
 
 ## SIMD rune counting
 

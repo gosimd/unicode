@@ -42,5 +42,5 @@ func AppendRune(a []uint16, r rune) []uint16 {
 
 // Decode returns the rune sequence represented by the UTF-16 code units s.
 func Decode(s []uint16) []rune {
-	return stdutf16.Decode(s)
+	return decode(s)
 }
