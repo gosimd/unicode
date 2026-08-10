@@ -1,54 +1,18 @@
 # API
 
-## Root package
+## UTF-8 package
 
 Import:
 
 ```go
-import "github.com/gosimd/unicode"
+import "github.com/gosimd/unicode/utf8"
 ```
 
-### `Valid`
-
-```go
-func Valid(p []byte) bool
-```
-
-`Valid` reports whether `p` consists entirely of well-formed UTF-8. It delegates to `simd/unicode/utf8.Valid`, which selects SIMD when available, matches `unicode/utf8.Valid`, and does not allocate.
-
-### `ValidString`
-
-```go
-func ValidString(s string) bool
-```
-
-`ValidString` reports whether `s` consists entirely of well-formed UTF-8. Its
-result matches `unicode/utf8.ValidString` and it does not allocate.
-
-It delegates to `simd/unicode/utf8.ValidString`; in supported SIMD builds that implementation presents the string as a read-only byte slice without copying and calls the SIMD-enabled `Valid` path. Other builds use the standard library fallback.
-
-### `RuneCount`
-
-```go
-func RuneCount(p []byte) int
-```
-
-`RuneCount` returns the number of runes in `p`. Erroneous and short encodings
-are counted as one width-1 `RuneError` each, matching `unicode/utf8.RuneCount`.
-It delegates to `simd/unicode/utf8.RuneCount`, which uses a SIMD one-pass
-validator/counter on supported builds and a standard-library fallback for
-malformed UTF-8 or unsupported CPUs.
-
-## UTF-8 compatibility package
-
-Import:
-
-```go
-import "github.com/gosimd/unicode/simd/unicode/utf8"
-```
-
-This package provides the following selected compatibility surface from
-`unicode/utf8`:
+`github.com/gosimd/unicode/utf8` is the public UTF-8 package. It mirrors the
+API and behaviour of the repository's Go 1.27rc1 baseline, `unicode/utf8`, so
+a caller can replace that import without changing call sites. The SIMD
+implementation is an internal detail: results never depend on CPU architecture
+or build flags.
 
 | Kind | Names |
 | --- | --- |
@@ -59,15 +23,31 @@ This package provides the following selected compatibility surface from
 | Inspection | `FullRune`, `FullRuneInString`, `RuneStart` |
 | Counting | `RuneCount`, `RuneCountInString` |
 
-`Valid([]byte)` and `ValidString(string)` in this package can use SIMD as
-described in [Valid.md](Valid.md). All other listed functions delegate to the
-Go standard library and follow its documented behaviour.
+`Valid([]byte)` and `ValidString(string)` use the SIMD validator on supported
+builds and otherwise call the standard-library equivalent. The SIMD
+`ValidString` path presents the string as a read-only byte slice without
+copying. Both forms allocate zero memory.
 
-## Compatibility and portability
+`RuneCount([]byte)` and `RuneCountInString(string)` validate and count valid
+UTF-8 in one SIMD traversal on supported builds. For malformed input they fall
+back to `unicode/utf8.RuneCount` semantics, where erroneous and short encodings
+count as one width-1 `RuneError` each. Every other API delegates directly to
+the standard library because its input is at most one rune or a few bytes and
+does not benefit from whole-buffer SIMD processing.
 
-The public result of every API is independent of CPU architecture and build
-flags. In particular, callers of the SIMD package must not need to detect AVX2,
-NEON, or Go's SIMD experiment; its `Valid` implementation chooses the
-available path internally.
+The compatibility surface is reviewed when the Go baseline changes. New
+exports in `unicode/utf8` are intentionally added here with matching tests;
+Go does not provide a package-wide re-export mechanism.
+
+## Root package
+
+Import:
+
+```go
+import "github.com/gosimd/unicode"
+```
+
+The root package is a smaller convenience facade exposing `Valid`,
+`ValidString`, and `RuneCount`. It delegates to `github.com/gosimd/unicode/utf8`.
 
 For the `Valid` implementation details, see [Valid.md](Valid.md).

@@ -1,6 +1,6 @@
 package utf
 
-import simdutf8 "github.com/gosimd/unicode/simd/unicode/utf8"
+import simdutf8 "github.com/gosimd/unicode/utf8"
 
 // Valid reports whether p consists entirely of valid UTF-8.
 func Valid(p []byte) bool {

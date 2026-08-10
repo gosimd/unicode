@@ -7,7 +7,7 @@ import (
 	"testing"
 	stdutf8 "unicode/utf8"
 
-	simdutf8 "github.com/gosimd/unicode/simd/unicode/utf8"
+	simdutf8 "github.com/gosimd/unicode/utf8"
 )
 
 var (

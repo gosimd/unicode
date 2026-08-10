@@ -55,7 +55,7 @@
       "type": "go",
       "request": "launch",
       "mode": "test",
-      "program": "${workspaceFolder}/simd/unicode/utf8",
+      "program": "${workspaceFolder}/utf8",
       "env": {
         "GOEXPERIMENT": "simd",
         "GOPATH": "/Users/ax2/gosimd/.gopath",

@@ -1,4 +1,4 @@
-# gosimd/utf
+# gosimd/unicode
 
 `gosimd` is a collection of SIMD implementations for important algorithms,
 primarily algorithms that process text and text-adjacent encodings.
@@ -10,8 +10,8 @@ Other `gosimd` libraries will cover domains such as JSON and general encoding.
 
 ## Current UTF-8 implementation
 
-The active SIMD implementation is `Valid([]byte)` in
-`github.com/gosimd/unicode/simd/unicode/utf8`:
+The public UTF-8 package is `github.com/gosimd/unicode/utf8`. It mirrors the
+current `unicode/utf8` API and accelerates selected whole-buffer operations:
 
 ```go
 package main
@@ -19,7 +19,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/gosimd/unicode/simd/unicode/utf8"
+	"github.com/gosimd/unicode/utf8"
 )
 
 func main() {
@@ -32,8 +32,8 @@ Its result is identical to `unicode/utf8.Valid`. The implementation selects
 SIMD only where it is supported and otherwise uses a safe standard-library
 fallback.
 
-The root package provides standard-library-compatible `Valid`, `ValidString`,
-and `RuneCount` facades through `simd/unicode/utf8`. `Valid` and `ValidString`
+The root package provides `Valid`, `ValidString`, and `RuneCount` convenience
+facades through `github.com/gosimd/unicode/utf8`. `Valid` and `ValidString`
 use the SIMD validator when available; `ValidString` passes the string to it
 without copying. `RuneCount` has the same semantics as `unicode/utf8.RuneCount`
 and uses a SIMD one-pass validator/counter for valid UTF-8 when supported. See
@@ -124,5 +124,5 @@ release-style optimized code.
 To start every package's tests under Delve, choose
 `Go: debug all tests (SIMD, registers)` from the Run and Debug selector. Go
 tests are separate executables per package, so this compound starts the root,
-`cmd/benchreport`, and `simd/unicode/utf8` test sessions together. Select the
+`cmd/benchreport`, and `utf8` test sessions together. Select the
 stopped session of interest before opening the Disassembly View.

@@ -1,6 +1,6 @@
-# SIMD algorithm for `simd/unicode/utf8.Valid`
+# SIMD algorithm for `github.com/gosimd/unicode/utf8.Valid`
 
-`simd/unicode/utf8.Valid(p []byte)` returns the same result as
+`github.com/gosimd/unicode/utf8.Valid(p []byte)` returns the same result as
 `unicode/utf8.Valid` without allocating. The SIMD implementation is enabled only with
 `GOEXPERIMENT=simd` on `arm64` or `amd64`. Unsupported builds and amd64 hosts
 without AVX2 call `unicode/utf8.Valid` directly.

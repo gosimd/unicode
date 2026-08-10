@@ -81,7 +81,7 @@
         "-c",
         "-o",
         "${workspaceFolder}/.vscode/utf8.test",
-        "./simd/unicode/utf8"
+        "./utf8"
       ],
       "options": {
         "env": {

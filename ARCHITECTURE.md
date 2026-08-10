@@ -2,25 +2,23 @@
 
 ## Design boundaries
 
-The root package, `github.com/gosimd/unicode`, is the stable user-facing surface.
-It exposes text operations and must not expose vector types, masks, CPU feature
-checks, or architecture-specific behaviour. Its validation and rune-counting
-methods delegate to `simd/unicode/utf8`; `Valid([]byte)` and `RuneCount([]byte)`
-therefore select the SIMD path when it is available.
+The UTF-8 package, `github.com/gosimd/unicode/utf8`, is the stable user-facing
+surface for UTF-8 operations. It mirrors `unicode/utf8` without exposing vector
+types, masks, CPU checks, or architecture-specific behaviour. Its `Valid` and
+`RuneCount` methods select the SIMD path when it is available.
 
-`simd/unicode/utf8` contains the UTF-8 implementation. Its API mirrors a
-selected part of `unicode/utf8`, with `Valid([]byte)` and `RuneCount([]byte)`
-as its optimized paths. Callers that explicitly import this package can use the
-SIMD implementation.
+The root package, `github.com/gosimd/unicode`, remains a compact convenience
+facade for `Valid`, `ValidString`, and `RuneCount`. It delegates to the public
+UTF-8 package.
 
 ## Validation dispatch
 
 ```text
-utf.Valid([]byte) -> simd/unicode/utf8.Valid([]byte)
-utf.RuneCount([]byte) -> simd/unicode/utf8.RuneCount([]byte)
+utf.Valid([]byte) -> gosimd/unicode/utf8.Valid([]byte)
+utf.RuneCount([]byte) -> gosimd/unicode/utf8.RuneCount([]byte)
 
-simd/unicode/utf8.Valid([]byte)
-simd/unicode/utf8.RuneCount([]byte)
+gosimd/unicode/utf8.Valid([]byte)
+gosimd/unicode/utf8.RuneCount([]byte)
         |
         +-- arm64 + GOEXPERIMENT=simd -> NEON implementation
         +-- amd64 + GOEXPERIMENT=simd + AVX2 -> SIMD implementation
@@ -31,7 +29,7 @@ The fallback is part of the correctness contract, not an exceptional path.
 Every implementation must return the same result as its corresponding
 `unicode/utf8` function.
 
-`simd/unicode/utf8.ValidString` and `RuneCountInString` create read-only,
+`unicode/utf8.ValidString` and `RuneCountInString` create read-only,
 zero-copy byte views when the SIMD implementation is available. The root
 package exposes `ValidString`; both supported and fallback paths do not
 allocate.

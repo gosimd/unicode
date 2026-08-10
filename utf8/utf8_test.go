@@ -5,7 +5,28 @@ import (
 	"testing"
 	stdutf8 "unicode/utf8"
 
-	simdutf8 "github.com/gosimd/unicode/simd/unicode/utf8"
+	simdutf8 "github.com/gosimd/unicode/utf8"
+)
+
+// Keep the public surface aligned with the Go baseline's unicode/utf8 package.
+// The assignments are compile-time checks and deliberately live in the external
+// test package, as a consumer imports this package.
+var (
+	_ func([]byte, rune) []byte = simdutf8.AppendRune
+	_ func([]byte) (rune, int)  = simdutf8.DecodeLastRune
+	_ func(string) (rune, int)  = simdutf8.DecodeLastRuneInString
+	_ func([]byte) (rune, int)  = simdutf8.DecodeRune
+	_ func(string) (rune, int)  = simdutf8.DecodeRuneInString
+	_ func([]byte, rune) int    = simdutf8.EncodeRune
+	_ func([]byte) bool         = simdutf8.FullRune
+	_ func(string) bool         = simdutf8.FullRuneInString
+	_ func([]byte) int          = simdutf8.RuneCount
+	_ func(string) int          = simdutf8.RuneCountInString
+	_ func(rune) int            = simdutf8.RuneLen
+	_ func(byte) bool           = simdutf8.RuneStart
+	_ func([]byte) bool         = simdutf8.Valid
+	_ func(rune) bool           = simdutf8.ValidRune
+	_ func(string) bool         = simdutf8.ValidString
 )
 
 func TestConstantsMatchStandardLibrary(t *testing.T) {
