@@ -64,12 +64,14 @@ See [docs/Valid.md](docs/Valid.md) for the detailed algorithm.
 
 ## SIMD UTF-16 decoding
 
-`utf16.Decode` processes eight `uint16` code units at a time. A vector range
-test first rejects any chunk containing `0xD800..0xDFFF`. Clean chunks are
-zero-extended into `rune` values: NEON widens two groups of four lanes, while
-AVX2 widens all eight lanes. A chunk with any surrogate is decoded by the
-scalar state machine one code unit at a time, so a high surrogate at a vector
-boundary, valid pairs, and malformed sequences have the exact
+`utf16.Decode` processes eight `uint16` code units at a time. It identifies
+surrogates with the equivalent bit test `codeUnit & 0xF800 == 0xD800`.
+Architecture-specific loops prepare those two vector constants once before
+processing chunks. Clean chunks are zero-extended into `rune` values: NEON
+widens two groups of four lanes, while AVX2 widens all eight lanes. A chunk
+with any surrogate is decoded by the scalar state machine one code unit at a
+time, so a high surrogate at a vector boundary, valid pairs, and malformed
+sequences have the exact
 `unicode/utf16.Decode` result. Unsupported builds, including amd64 without
 AVX2, delegate to the standard library.
 

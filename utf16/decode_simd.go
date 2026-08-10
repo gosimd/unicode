@@ -13,6 +13,7 @@ const (
 	surrogateHighStart  = 0xD800
 	surrogateLowStart   = 0xDC00
 	surrogateEnd        = 0xE000
+	surrogateMask       = 0xF800
 	replacementRune     = '\uFFFD'
 	surrogateOffset     = 0x10000
 )
@@ -23,30 +24,6 @@ func decode(s []uint16) []rune {
 	}
 
 	return decodeSIMD(s)
-}
-
-// decodeSIMD widens clean BMP chunks with SIMD. Any chunk containing a
-// surrogate is decoded one code unit at a time, which preserves the standard
-// library's handling of pairs and malformed UTF-16.
-func decodeSIMD(s []uint16) []rune {
-	out := make([]rune, len(s))
-	i, n := 0, 0
-	for i < len(s) {
-		if len(s)-i >= decodeSIMDChunkSize && decodeSIMDChunk(s[i:], out[n:]) {
-			i += decodeSIMDChunkSize
-			n += decodeSIMDChunkSize
-			continue
-		}
-
-		// Decode an entire rejected chunk scalarly before testing the next one.
-		// Testing after every scalar rune regresses inputs with dense surrogates.
-		end := i + decodeSIMDChunkSize
-		if end > len(s) {
-			end = len(s)
-		}
-		i, n = decodeScalar(s, out, i, n, end)
-	}
-	return out[:n]
 }
 
 // decodeScalar decodes s[i:end] with the same replacement and surrogate-pair
