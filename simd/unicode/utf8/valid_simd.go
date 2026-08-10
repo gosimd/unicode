@@ -241,16 +241,6 @@ func stateAfterSIMDChunk(chunk archsimd.Uint8x16) (utf8State, bool) {
 	return utf8State{}, true
 }
 
-func invalidLeadingBytes(chunk archsimd.Uint8x16) archsimd.Uint8x16 {
-	high := highNibbles(chunk)
-	low := lowNibbles(chunk)
-	highC := maskBits(high.Equal(archsimd.BroadcastUint8x16(0x0c)))
-	highF := maskBits(high.Equal(archsimd.BroadcastUint8x16(0x0f)))
-	invalidC := lookupNibble(archsimd.LoadUint8x16Array(&utf8InvalidC0C1LowTable), low)
-	invalidF := lookupNibble(archsimd.LoadUint8x16Array(&utf8InvalidF5FFLowTable), low)
-	return highC.And(invalidC).Or(highF.And(invalidF))
-}
-
 func classFlags(chunk archsimd.Uint8x16) archsimd.Uint8x16 {
 	return lookupNibble(archsimd.LoadUint8x16Array(&utf8HighClassTable), highNibbles(chunk))
 }

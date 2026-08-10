@@ -34,3 +34,13 @@ func leadMasks(chunk archsimd.Uint8x16) (archsimd.Mask8x16, archsimd.Mask8x16, a
 	)
 	return lead2, lead3, lead4
 }
+
+func invalidLeadingBytes(chunk archsimd.Uint8x16) archsimd.Uint8x16 {
+	high := highNibbles(chunk)
+	low := lowNibbles(chunk)
+	highC := maskBits(high.Equal(archsimd.BroadcastUint8x16(0x0c)))
+	highF := maskBits(high.Equal(archsimd.BroadcastUint8x16(0x0f)))
+	invalidC := lookupNibble(archsimd.LoadUint8x16Array(&utf8InvalidC0C1LowTable), low)
+	invalidF := lookupNibble(archsimd.LoadUint8x16Array(&utf8InvalidF5FFLowTable), low)
+	return highC.And(invalidC).Or(highF.And(invalidF))
+}
