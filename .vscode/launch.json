@@ -21,6 +21,59 @@
       "request": "launch",
       "mode": "test",
       "program": "${fileDirname}"
+    },
+    {
+      "name": "Go: debug root tests (SIMD, registers)",
+      "type": "go",
+      "request": "launch",
+      "mode": "test",
+      "program": "${workspaceFolder}",
+      "env": {
+        "GOEXPERIMENT": "simd",
+        "GOPATH": "/Users/ax2/gosimd/.gopath",
+        "GOBIN": "/Users/ax2/gosimd/.gopath/bin",
+        "GOCACHE": "/Users/ax2/gosimd/.cache/go-build"
+      },
+      "showRegisters": true
+    },
+    {
+      "name": "Go: debug bench-report tests (SIMD, registers)",
+      "type": "go",
+      "request": "launch",
+      "mode": "test",
+      "program": "${workspaceFolder}/cmd/benchreport",
+      "env": {
+        "GOEXPERIMENT": "simd",
+        "GOPATH": "/Users/ax2/gosimd/.gopath",
+        "GOBIN": "/Users/ax2/gosimd/.gopath/bin",
+        "GOCACHE": "/Users/ax2/gosimd/.cache/go-build"
+      },
+      "showRegisters": true
+    },
+    {
+      "name": "Go: debug UTF-8 tests (SIMD, registers)",
+      "type": "go",
+      "request": "launch",
+      "mode": "test",
+      "program": "${workspaceFolder}/simd/unicode/utf8",
+      "env": {
+        "GOEXPERIMENT": "simd",
+        "GOPATH": "/Users/ax2/gosimd/.gopath",
+        "GOBIN": "/Users/ax2/gosimd/.gopath/bin",
+        "GOCACHE": "/Users/ax2/gosimd/.cache/go-build"
+      },
+      "showRegisters": true
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Go: debug all tests (SIMD, registers)",
+      "configurations": [
+        "Go: debug root tests (SIMD, registers)",
+        "Go: debug bench-report tests (SIMD, registers)",
+        "Go: debug UTF-8 tests (SIMD, registers)"
+      ],
+      "stopAll": true
     }
   ]
 }

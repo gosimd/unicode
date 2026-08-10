@@ -28,12 +28,7 @@
   "go.buildOnSave": "package",
   "go.testOnSave": false,
   "go.delveConfig": {
-    "dlvLoadConfig": {
-      "followPointers": true,
-      "maxVariableRecurse": 1,
-      "maxStringLen": 1024,
-      "maxArrayValues": 64,
-      "maxStructFields": -1
-    }
+    "debugAdapter": "dlv-dap",
+    "showRegisters": true
   }
 }

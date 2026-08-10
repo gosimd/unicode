@@ -71,6 +71,59 @@
       "command": "../.tools/go1.27rc1/bin/go",
       "args": ["tool", "pprof", "-http=:0", "../.profiles/mem.out"],
       "problemMatcher": []
+    },
+    {
+      "label": "Go: build UTF-8 test binary (SIMD)",
+      "type": "shell",
+      "command": "../.tools/go1.27rc1/bin/go",
+      "args": [
+        "test",
+        "-c",
+        "-o",
+        "${workspaceFolder}/.vscode/utf8.test",
+        "./simd/unicode/utf8"
+      ],
+      "options": {
+        "env": {
+          "GOEXPERIMENT": "simd",
+          "GOPATH": "/Users/ax2/gosimd/.gopath",
+          "GOBIN": "/Users/ax2/gosimd/.gopath/bin",
+          "GOCACHE": "/Users/ax2/gosimd/.cache/go-build"
+        }
+      },
+      "problemMatcher": ["$go"]
+    },
+    {
+      "label": "Go: disassemble UTF-8 symbol (SIMD)",
+      "type": "shell",
+      "command": "env",
+      "args": [
+        "-u",
+        "GOCACHE",
+        "../.tools/go1.27rc1/bin/go",
+        "tool",
+        "objdump",
+        "-S",
+        "-s",
+        "${input:utf8Symbol}",
+        "${workspaceFolder}/.vscode/utf8.test"
+      ],
+      "dependsOn": "Go: build UTF-8 test binary (SIMD)",
+      "presentation": {
+        "clear": true,
+        "focus": true,
+        "panel": "dedicated",
+        "reveal": "always"
+      },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "utf8Symbol",
+      "type": "promptString",
+      "description": "Symbol suffix or Go regular expression (for example: Valid$ or RuneCount$)",
+      "default": "Valid$"
     }
   ]
 }

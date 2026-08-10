@@ -104,3 +104,25 @@ In VS Code, install the recommended Go extension and use the provided tasks:
 - `Go: profile benchmark`
 - `Go: pprof CPU`
 - `Go: pprof memory`
+
+### Disassembly in VS Code
+
+The recommended `golang.go` extension is installed locally. For the optimized
+SIMD machine code with its Go source alongside, run **Tasks: Run Task** and
+choose `Go: disassemble UTF-8 symbol (SIMD)`. The task asks for a symbol suffix
+or Go regular expression; its default `Valid$` selects `utf8.Valid`. The
+disassembly opens in VS Code's dedicated integrated-terminal panel. Use
+`RuneCount$` to show that exported function instead.
+
+For an interactive debug session, put a breakpoint in a UTF-8 test and start
+`Go: debug UTF-8 tests (SIMD, registers)`. When execution stops, use the
+Command Palette command **Debug: Open Disassembly View**. That configuration
+uses Delve's DAP adapter and shows registers. Delve compiles debug sessions
+without optimizations and inlining; use the task above when inspecting
+release-style optimized code.
+
+To start every package's tests under Delve, choose
+`Go: debug all tests (SIMD, registers)` from the Run and Debug selector. Go
+tests are separate executables per package, so this compound starts the root,
+`cmd/benchreport`, and `simd/unicode/utf8` test sessions together. Select the
+stopped session of interest before opening the Disassembly View.
