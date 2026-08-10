@@ -1,0 +1,76 @@
+{
+  "version": "2.0.0",
+  "options": {
+    "env": {
+      "GOPATH": "/Users/ax2/gosimd/.gopath",
+      "GOBIN": "/Users/ax2/gosimd/.gopath/bin",
+      "GOCACHE": "/Users/ax2/gosimd/.cache/go-build"
+    }
+  },
+  "tasks": [
+    {
+      "label": "Go: build",
+      "type": "shell",
+      "command": "../.tools/go1.27rc1/bin/go",
+      "args": ["build", "./..."],
+      "group": "build",
+      "problemMatcher": ["$go"]
+    },
+    {
+      "label": "Go: test",
+      "type": "shell",
+      "command": "../.tools/go1.27rc1/bin/go",
+      "args": ["test", "-v", "./..."],
+      "group": "test",
+      "problemMatcher": ["$go"]
+    },
+    {
+      "label": "Go: test race",
+      "type": "shell",
+      "command": "../.tools/go1.27rc1/bin/go",
+      "args": ["test", "-race", "./..."],
+      "group": "test",
+      "problemMatcher": ["$go"]
+    },
+    {
+      "label": "Go: benchmark",
+      "type": "shell",
+      "command": "../.tools/go1.27rc1/bin/go",
+      "args": ["test", "-run=^$", "-bench=.", "-benchmem", "./..."],
+      "group": "test",
+      "problemMatcher": ["$go"]
+    },
+    {
+      "label": "Go: profile benchmark",
+      "type": "shell",
+      "command": "../.tools/go1.27rc1/bin/go",
+      "args": [
+        "test",
+        "-run=^$",
+        "-bench=.",
+        "-benchmem",
+        "-cpuprofile",
+        "../.profiles/cpu.out",
+        "-memprofile",
+        "../.profiles/mem.out",
+        "."
+      ],
+      "group": "test",
+      "problemMatcher": ["$go"]
+    },
+    {
+      "label": "Go: pprof CPU",
+      "type": "shell",
+      "command": "../.tools/go1.27rc1/bin/go",
+      "args": ["tool", "pprof", "-http=:0", "../.profiles/cpu.out"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Go: pprof memory",
+      "type": "shell",
+      "command": "../.tools/go1.27rc1/bin/go",
+      "args": ["tool", "pprof", "-http=:0", "../.profiles/mem.out"],
+      "problemMatcher": []
+    }
+  ]
+}
