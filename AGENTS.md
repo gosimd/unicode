@@ -1,6 +1,6 @@
 # Agent Instructions
 
-This repository is `github.com/gosimd/utf`: a Go library for fast, correct
+This repository is `github.com/gosimd/unicode`: a Go library for fast, correct
 operations on UTF encodings. The first implementation target is UTF-8.
 
 ## Project Goals
@@ -97,7 +97,7 @@ Use `gofmt` on every changed Go file.
 
 ## Repository Hygiene
 
-- Keep the module path as `github.com/gosimd/utf` unless the maintainer decides
+- Keep the module path as `github.com/gosimd/unicode` unless the maintainer decides
   otherwise.
 - Keep the MIT license intact.
 - Do not vendor dependencies unless there is a strong reason.

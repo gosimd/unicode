@@ -2,10 +2,9 @@
 
 ## Design boundaries
 
-The root package, `github.com/gosimd/utf`, is the stable user-facing surface.
+The root package, `github.com/gosimd/unicode`, is the stable user-facing surface.
 It exposes text operations and must not expose vector types, masks, CPU feature
-checks, or architecture-specific behaviour. Its current validation methods
-delegate directly to `unicode/utf8`.
+checks, or architecture-specific behaviour. Its validation methods delegate to `simd/unicode/utf8`; `Valid([]byte)` therefore selects the SIMD path when it is available.
 
 `simd/unicode/utf8` contains the UTF-8 implementation. Its API mirrors a
 selected part of `unicode/utf8`, with `Valid([]byte)` as its optimized path.
@@ -14,7 +13,7 @@ Callers that explicitly import this package can use the SIMD implementation.
 ## Validation dispatch
 
 ```text
-utf.Valid([]byte) -> unicode/utf8.Valid([]byte)
+utf.Valid([]byte) -> simd/unicode/utf8.Valid([]byte)
 
 simd/unicode/utf8.Valid([]byte)
         |

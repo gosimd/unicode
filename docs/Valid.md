@@ -5,8 +5,7 @@
 `GOEXPERIMENT=simd` on `arm64` or `amd64`. Unsupported builds and amd64 hosts
 without AVX2 call `unicode/utf8.Valid` directly.
 
-The root package's `utf.Valid` currently delegates to the standard library; it
-does not route through this implementation.
+The root package's `utf.Valid` delegates to this implementation, so it uses SIMD whenever this package selects the SIMD path.
 
 ## Processing shape
 

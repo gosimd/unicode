@@ -2,7 +2,7 @@
 
 `gosimd` is a collection of SIMD implementations for important algorithms,
 primarily algorithms that process text and text-adjacent encodings.
-`github.com/gosimd/utf` is the UTF-encoding member of that collection: it
+`github.com/gosimd/unicode` is the UTF-encoding member of that collection: it
 provides correct, allocation-free SIMD implementations of UTF algorithms.
 
 The current focus is UTF-8 validation. UTF-16 algorithms are planned next.
@@ -11,7 +11,7 @@ Other `gosimd` libraries will cover domains such as JSON and general encoding.
 ## Current UTF-8 implementation
 
 The active SIMD implementation is `Valid([]byte)` in
-`github.com/gosimd/utf/simd/unicode/utf8`:
+`github.com/gosimd/unicode/simd/unicode/utf8`:
 
 ```go
 package main
@@ -19,7 +19,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/gosimd/utf/simd/unicode/utf8"
+	"github.com/gosimd/unicode/simd/unicode/utf8"
 )
 
 func main() {
@@ -32,8 +32,7 @@ Its result is identical to `unicode/utf8.Valid`. The implementation selects
 SIMD only where it is supported and otherwise uses a safe standard-library
 fallback.
 
-The root package currently provides standard-library-compatible `Valid` and
-`ValidString` facades; both delegate to `unicode/utf8`. See
+The root package provides standard-library-compatible `Valid` and `ValidString` facades through `simd/unicode/utf8`. `Valid([]byte)` can therefore use the SIMD implementation, while `ValidString` currently follows the standard library. See
 [docs/API.md](docs/API.md) for the full current API and
 [docs/Valid.md](docs/Valid.md) for the SIMD algorithm.
 

@@ -5,7 +5,7 @@
 Import:
 
 ```go
-import "github.com/gosimd/utf"
+import "github.com/gosimd/unicode"
 ```
 
 ### `Valid`
@@ -14,8 +14,7 @@ import "github.com/gosimd/utf"
 func Valid(p []byte) bool
 ```
 
-`Valid` reports whether `p` consists entirely of well-formed UTF-8. It
-delegates to `unicode/utf8.Valid`, matches its result, and does not allocate.
+`Valid` reports whether `p` consists entirely of well-formed UTF-8. It delegates to `simd/unicode/utf8.Valid`, which selects SIMD when available, matches `unicode/utf8.Valid`, and does not allocate.
 
 ### `ValidString`
 
@@ -26,15 +25,14 @@ func ValidString(s string) bool
 `ValidString` reports whether `s` consists entirely of well-formed UTF-8. Its
 result matches `unicode/utf8.ValidString` and it does not allocate.
 
-At present this method delegates to the standard library; it is not converted
-to a byte slice and it does not use the SIMD validator.
+It delegates to `simd/unicode/utf8.ValidString`; that implementation currently delegates to the standard library, is not converted to a byte slice, and does not use the SIMD validator.
 
 ## UTF-8 compatibility package
 
 Import:
 
 ```go
-import "github.com/gosimd/utf/simd/unicode/utf8"
+import "github.com/gosimd/unicode/simd/unicode/utf8"
 ```
 
 This package provides the following selected compatibility surface from
