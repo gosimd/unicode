@@ -295,6 +295,17 @@ func TestValidBoundaryMatchesStandardLibrary(t *testing.T) {
 	}
 }
 
+func TestValidInvalidLeadingByteAtSIMDChunkEnd(t *testing.T) {
+	for _, prefixLen := range []int{15, 31, 47, 63, 79, 95} {
+		for _, lead := range []byte{0xc0, 0xc1, 0xf5, 0xff} {
+			data := append(bytes.Repeat([]byte{'a'}, prefixLen), lead)
+			if got, want := simdutf8.Valid(data), stdutf8.Valid(data); got != want {
+				t.Fatalf("Valid(% x) = %v, want %v", data, got, want)
+			}
+		}
+	}
+}
+
 func TestValidPrefixSweepMatchesStandardLibrary(t *testing.T) {
 	suffixes := []struct {
 		name string
@@ -368,6 +379,27 @@ func TestValidStringMatchesStandardLibrary(t *testing.T) {
 			}
 		})
 	}
+}
+
+func FuzzValidMatchesStandardLibrary(f *testing.F) {
+	for _, seed := range [][]byte{
+		nil,
+		bytes.Repeat([]byte{'a'}, 64),
+		bytes.Repeat([]byte("hello, 世界 😀 "), 16),
+		{0xc0},
+		{0xe0, 0xa0, 0x80},
+		{0xed, 0xa0, 0x80},
+		{0xf4, 0x8f, 0xbf, 0xbf},
+		{0xf4, 0x90, 0x80, 0x80},
+	} {
+		f.Add(seed)
+	}
+
+	f.Fuzz(func(t *testing.T, data []byte) {
+		if got, want := simdutf8.Valid(data), stdutf8.Valid(data); got != want {
+			t.Fatalf("Valid(% x) = %v, want %v", data, got, want)
+		}
+	})
 }
 
 func cloneBytes(p []byte) []byte {

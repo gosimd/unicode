@@ -190,31 +190,21 @@ func (s *utf8State) step(b byte, class byte) bool {
 	}
 }
 
-func validateSIMDChunk(chunk archsimd.Uint8x16, prev archsimd.Uint8x16) archsimd.Uint8x16 {
-	prev1 := chunk.ConcatShiftBytesRight(prev, 15)
-	prev2 := chunk.ConcatShiftBytesRight(prev, 14)
-	prev3 := chunk.ConcatShiftBytesRight(prev, 13)
-
-	continuation := continuationMask(chunk)
-	expectedContinuation := need1Mask(prev1).Or(need2Mask(prev2)).Or(need3Mask(prev3))
-
-	errors := maskBits(continuation).Xor(maskBits(expectedContinuation))
-	errors = errors.Or(invalidLeadingBytes(chunk))
-	errors = errors.Or(maskBits(prev1.Equal(archsimd.BroadcastUint8x16(0xe0)).And(chunk.Less(archsimd.BroadcastUint8x16(0xa0)))))
-	errors = errors.Or(maskBits(prev1.Equal(archsimd.BroadcastUint8x16(0xed)).And(chunk.Greater(archsimd.BroadcastUint8x16(0x9f)))))
-	errors = errors.Or(maskBits(prev1.Equal(archsimd.BroadcastUint8x16(0xf0)).And(chunk.Less(archsimd.BroadcastUint8x16(0x90)))))
-	errors = errors.Or(maskBits(prev1.Equal(archsimd.BroadcastUint8x16(0xf4)).And(chunk.Greater(archsimd.BroadcastUint8x16(0x8f)))))
-	return errors
-}
-
 func stateAfterSIMDChunk(chunk archsimd.Uint8x16) (utf8State, bool) {
 	b13 := chunk.GetElem(13)
 	b14 := chunk.GetElem(14)
 	b15 := chunk.GetElem(15)
 
-	if class := classifyScalar(b15); class == utf8Lead2 || class == utf8Lead3 || class == utf8Lead4 {
+	class15 := classifyScalar(b15)
+	// The fused SIMD predicate validates a leading byte against its successor.
+	// A malformed lead in the final lane has no successor in this chunk, so it
+	// must be rejected while determining the state carried into the scalar tail.
+	if class15 == utf8Invalid {
+		return utf8State{}, false
+	}
+	if class15 == utf8Lead2 || class15 == utf8Lead3 || class15 == utf8Lead4 {
 		var state utf8State
-		if !state.step(b15, class) {
+		if !state.step(b15, class15) {
 			return utf8State{}, false
 		}
 		return state, true

@@ -4,6 +4,23 @@ package utf8
 
 import "simd/archsimd"
 
+func validateSIMDChunk(chunk archsimd.Uint8x16, prev archsimd.Uint8x16) archsimd.Uint8x16 {
+	prev1 := chunk.ConcatShiftBytesRight(prev, 15)
+	prev2 := chunk.ConcatShiftBytesRight(prev, 14)
+	prev3 := chunk.ConcatShiftBytesRight(prev, 13)
+
+	continuation := continuationMask(chunk)
+	expectedContinuation := need1Mask(prev1).Or(need2Mask(prev2)).Or(need3Mask(prev3))
+
+	errors := maskBits(continuation).Xor(maskBits(expectedContinuation))
+	errors = errors.Or(invalidLeadingBytes(chunk))
+	errors = errors.Or(maskBits(prev1.Equal(archsimd.BroadcastUint8x16(0xe0)).And(chunk.Less(archsimd.BroadcastUint8x16(0xa0)))))
+	errors = errors.Or(maskBits(prev1.Equal(archsimd.BroadcastUint8x16(0xed)).And(chunk.Greater(archsimd.BroadcastUint8x16(0x9f)))))
+	errors = errors.Or(maskBits(prev1.Equal(archsimd.BroadcastUint8x16(0xf0)).And(chunk.Less(archsimd.BroadcastUint8x16(0x90)))))
+	errors = errors.Or(maskBits(prev1.Equal(archsimd.BroadcastUint8x16(0xf4)).And(chunk.Greater(archsimd.BroadcastUint8x16(0x8f)))))
+	return errors
+}
+
 func continuationMask(chunk archsimd.Uint8x16) archsimd.Mask8x16 {
 	return hasClassFlag(classFlags(chunk), utf8ClassContinuation)
 }
