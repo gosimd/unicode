@@ -83,8 +83,3 @@ func RuneStart(b byte) bool {
 func ValidRune(r rune) bool {
 	return stdutf8.ValidRune(r)
 }
-
-// ValidString reports whether s consists entirely of valid UTF-8.
-func ValidString(s string) bool {
-	return stdutf8.ValidString(s)
-}

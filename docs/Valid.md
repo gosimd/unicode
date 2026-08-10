@@ -5,7 +5,10 @@
 `GOEXPERIMENT=simd` on `arm64` or `amd64`. Unsupported builds and amd64 hosts
 without AVX2 call `unicode/utf8.Valid` directly.
 
-The root package's `utf.Valid` delegates to this implementation, so it uses SIMD whenever this package selects the SIMD path.
+The root package's `utf.Valid` delegates to this implementation, so it uses
+SIMD whenever this package selects the SIMD path. In SIMD-enabled builds,
+`ValidString` creates a read-only, zero-copy byte view of its string and calls
+the same validator.
 
 ## Processing shape
 

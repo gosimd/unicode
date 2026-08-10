@@ -32,7 +32,7 @@ Its result is identical to `unicode/utf8.Valid`. The implementation selects
 SIMD only where it is supported and otherwise uses a safe standard-library
 fallback.
 
-The root package provides standard-library-compatible `Valid` and `ValidString` facades through `simd/unicode/utf8`. `Valid([]byte)` can therefore use the SIMD implementation, while `ValidString` currently follows the standard library. See
+The root package provides standard-library-compatible `Valid` and `ValidString` facades through `simd/unicode/utf8`. Both use the SIMD validator when available; `ValidString` passes the string to it without copying. See
 [docs/API.md](docs/API.md) for the full current API and
 [docs/Valid.md](docs/Valid.md) for the SIMD algorithm.
 

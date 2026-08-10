@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"simd/archsimd"
 	stdutf8 "unicode/utf8"
+	"unsafe"
 )
 
 const (
@@ -83,6 +84,17 @@ func Valid(p []byte) bool {
 	}
 
 	return state.complete()
+}
+
+// ValidString reports whether s consists entirely of valid UTF-8.
+//
+// It presents s to Valid without copying. Valid only reads its input, so the
+// resulting byte slice does not violate string immutability.
+func ValidString(s string) bool {
+	if len(s) == 0 {
+		return true
+	}
+	return Valid(unsafe.Slice(unsafe.StringData(s), len(s)))
 }
 
 const (
