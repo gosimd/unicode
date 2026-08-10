@@ -58,16 +58,6 @@ func FullRuneInString(s string) bool {
 	return stdutf8.FullRuneInString(s)
 }
 
-// RuneCount returns the number of runes in p.
-func RuneCount(p []byte) int {
-	return stdutf8.RuneCount(p)
-}
-
-// RuneCountInString is like RuneCount but its input is a string.
-func RuneCountInString(s string) int {
-	return stdutf8.RuneCountInString(s)
-}
-
 // RuneLen returns the number of bytes required to encode the rune.
 func RuneLen(r rune) int {
 	return stdutf8.RuneLen(r)

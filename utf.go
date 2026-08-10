@@ -11,3 +11,9 @@ func Valid(p []byte) bool {
 func ValidString(s string) bool {
 	return simdutf8.ValidString(s)
 }
+
+// RuneCount returns the number of runes in p. Erroneous and short encodings
+// are treated as single runes of width 1 byte.
+func RuneCount(p []byte) int {
+	return simdutf8.RuneCount(p)
+}

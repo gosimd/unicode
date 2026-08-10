@@ -32,7 +32,11 @@ Its result is identical to `unicode/utf8.Valid`. The implementation selects
 SIMD only where it is supported and otherwise uses a safe standard-library
 fallback.
 
-The root package provides standard-library-compatible `Valid` and `ValidString` facades through `simd/unicode/utf8`. Both use the SIMD validator when available; `ValidString` passes the string to it without copying. See
+The root package provides standard-library-compatible `Valid`, `ValidString`,
+and `RuneCount` facades through `simd/unicode/utf8`. `Valid` and `ValidString`
+use the SIMD validator when available; `ValidString` passes the string to it
+without copying. `RuneCount` has the same semantics as `unicode/utf8.RuneCount`
+and uses a SIMD one-pass validator/counter for valid UTF-8 when supported. See
 [docs/API.md](docs/API.md) for the full current API and
 [docs/Valid.md](docs/Valid.md) for the SIMD algorithm.
 

@@ -218,6 +218,32 @@ func TestRuneCountInStringMatchesStandardLibrary(t *testing.T) {
 	}
 }
 
+func TestRuneCountPrefixSweepMatchesStandardLibrary(t *testing.T) {
+	suffixes := [][]byte{
+		[]byte("x"),
+		[]byte("¢"),
+		[]byte("世"),
+		[]byte("😀"),
+		{0x80},
+		{0xc0, 0xaf},
+		{0xe0, 0x80, 0x80},
+		{0xed, 0xa0, 0x80},
+		{0xf4, 0x90, 0x80, 0x80},
+		{0xe2, 0x82},
+		{0xf0, 0x9f, 0x98},
+	}
+
+	for prefixLen := 0; prefixLen <= 96; prefixLen++ {
+		prefix := bytes.Repeat([]byte{'a'}, prefixLen)
+		for _, suffix := range suffixes {
+			data := append(append([]byte(nil), prefix...), suffix...)
+			if got, want := simdutf8.RuneCount(data), stdutf8.RuneCount(data); got != want {
+				t.Fatalf("RuneCount(% x) = %d, want %d", data, got, want)
+			}
+		}
+	}
+}
+
 func TestRuneLenMatchesStandardLibrary(t *testing.T) {
 	tests := []rune{
 		-1,
@@ -398,6 +424,28 @@ func FuzzValidMatchesStandardLibrary(f *testing.F) {
 	f.Fuzz(func(t *testing.T, data []byte) {
 		if got, want := simdutf8.Valid(data), stdutf8.Valid(data); got != want {
 			t.Fatalf("Valid(% x) = %v, want %v", data, got, want)
+		}
+	})
+}
+
+func FuzzRuneCountMatchesStandardLibrary(f *testing.F) {
+	for _, seed := range [][]byte{
+		nil,
+		bytes.Repeat([]byte{'a'}, 64),
+		bytes.Repeat([]byte("hello, 世界 😀 "), 16),
+		{0x80},
+		{0xc0, 0xaf},
+		{0xe0, 0xa0, 0x80},
+		{0xed, 0xa0, 0x80},
+		{0xf4, 0x8f, 0xbf, 0xbf},
+		{0xf4, 0x90, 0x80, 0x80},
+	} {
+		f.Add(seed)
+	}
+
+	f.Fuzz(func(t *testing.T, data []byte) {
+		if got, want := simdutf8.RuneCount(data), stdutf8.RuneCount(data); got != want {
+			t.Fatalf("RuneCount(% x) = %d, want %d", data, got, want)
 		}
 	})
 }

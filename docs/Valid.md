@@ -64,6 +64,19 @@ is truncated.
 The scalar tail reconstructs state from the final three bytes only when a tail
 is present. This keeps the common full-block path entirely vector-based.
 
+## `RuneCount`
+
+`RuneCount` uses the same block sizes, validation predicates, and boundary
+carry as `Valid`, but fuses counting into that traversal. For a well-formed
+UTF-8 buffer, each continuation byte belongs to a preceding rune, so the result
+is `len(p) - continuationCount`. The continuation predicate is computed as a
+SIMD mask and reduced with two 64-bit population counts per 16-byte chunk.
+
+Malformed input cannot use that identity: `unicode/utf8.RuneCount` treats each
+erroneous or short byte as a width-1 error rune. If the SIMD validator finds an
+error, `RuneCount` restarts with `unicode/utf8.RuneCount` to retain exactly
+those semantics. The zero-copy `RuneCountInString` path shares this logic.
+
 ## ARM64 / NEON
 
 ARM64 uses the fused algorithm derived from simdutf's error-vector approach.

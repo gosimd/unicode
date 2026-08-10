@@ -27,6 +27,18 @@ result matches `unicode/utf8.ValidString` and it does not allocate.
 
 It delegates to `simd/unicode/utf8.ValidString`; in supported SIMD builds that implementation presents the string as a read-only byte slice without copying and calls the SIMD-enabled `Valid` path. Other builds use the standard library fallback.
 
+### `RuneCount`
+
+```go
+func RuneCount(p []byte) int
+```
+
+`RuneCount` returns the number of runes in `p`. Erroneous and short encodings
+are counted as one width-1 `RuneError` each, matching `unicode/utf8.RuneCount`.
+It delegates to `simd/unicode/utf8.RuneCount`, which uses a SIMD one-pass
+validator/counter on supported builds and a standard-library fallback for
+malformed UTF-8 or unsupported CPUs.
+
 ## UTF-8 compatibility package
 
 Import:

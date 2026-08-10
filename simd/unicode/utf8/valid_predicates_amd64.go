@@ -30,10 +30,6 @@ func validateSIMDChunk(chunk archsimd.Uint8x16, prev archsimd.Uint8x16) archsimd
 	return errors
 }
 
-func continuationMask(chunk archsimd.Uint8x16) archsimd.Mask8x16 {
-	return hasClassFlag(classFlags(chunk), utf8ClassContinuation)
-}
-
 func need1Mask(chunk archsimd.Uint8x16) archsimd.Mask8x16 {
 	lead2, lead3, lead4 := leadMasks(chunk)
 	return lead2.Or(lead3).Or(lead4)

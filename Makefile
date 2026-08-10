@@ -34,7 +34,7 @@ bench-utf8:
 	$(GO) test -run='^$$' -bench='$(BENCH)' -benchmem -count=$(BENCH_COUNT) $(UTF8_PKG)
 
 bench-utf8-simd:
-	GOEXPERIMENT=$(SIMD_GOEXPERIMENT) $(GO) test -run='^$$' -bench='$(BENCH)' -benchmem -count=$(BENCH_COUNT) $(UTF8_PKG)
+	GOEXPERIMENT=$(SIMD_GOEXPERIMENT) $(GO) test -run='^$$' -bench='BenchmarkRuneCount' -benchmem -count=$(BENCH_COUNT) $(UTF8_PKG)
 
 bench-utf8-report:
 	mkdir -p $(dir $(VALID_BENCH_OUTPUT))
