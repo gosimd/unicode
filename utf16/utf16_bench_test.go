@@ -47,7 +47,12 @@ func BenchmarkEncode(b *testing.B) {
 					benchCodeUnitsSink = encodeSIMD(input.data, out, capacity)
 				}
 			})
-
+			b.Run("simd_total", func(b *testing.B) {
+				b.SetBytes(int64(len(input.data) * 2))
+				for b.Loop() {
+					benchCodeUnitsSink = Encode(input.data)
+				}
+			})
 		})
 	}
 }
