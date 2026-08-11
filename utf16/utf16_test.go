@@ -44,7 +44,39 @@ func TestMatchesStandardLibrary(t *testing.T) {
 	}
 }
 
-func TestDecodeMatchesStandardLibraryAtSIMDBoundaries(t *testing.T) {
+func TestEncodeMatchesStandardLibraryAtBoundaries(t *testing.T) {
+	tests := []struct {
+		name string
+		data []rune
+	}{
+		{
+			name: "clean_blocks_and_tail",
+			data: []rune{'A', 0x07FF, 0xD7FF, 0xE000, 0xFFFF, 'Z', 0x4E16, 0x754C, 'x'},
+		},
+		{
+			name: "non_bmp_at_block_boundary",
+			data: []rune{'a', 'b', 'c', 'd', 'e', 'f', 'g', 0x1F600, 'h'},
+		},
+		{
+			name: "surrogate_and_invalid_runes",
+			data: []rune{'a', 0xD800, 0xDFFF, 0x110000, -1, 'b'},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, want := Encode(tt.data), stdutf16.Encode(tt.data)
+			if !reflect.DeepEqual(got, want) {
+				t.Fatalf("Encode(%U) = %X, want %X", tt.data, got, want)
+			}
+			if cap(got) != cap(want) {
+				t.Fatalf("cap(Encode(%U)) = %d, want %d", tt.data, cap(got), cap(want))
+			}
+		})
+	}
+}
+
+func TestDecodeMatchesStandardLibraryAtBoundaries(t *testing.T) {
 	tests := []struct {
 		name string
 		data []uint16
@@ -99,6 +131,35 @@ func FuzzDecodeMatchesStandardLibrary(f *testing.F) {
 		}
 		if got, want := Decode(codeUnits), stdutf16.Decode(codeUnits); !reflect.DeepEqual(got, want) {
 			t.Fatalf("Decode(%X) = %U, want %U", codeUnits, got, want)
+		}
+	})
+}
+
+func FuzzEncodeMatchesStandardLibrary(f *testing.F) {
+	for _, seed := range [][]byte{
+		nil,
+		{0x00, 0x00, 0x00, 0x00},
+		{0xFF, 0xD7, 0x00, 0x00, 0x00, 0xD8, 0x00, 0x00},
+		{0xFF, 0xFF, 0x10, 0x00, 0x00, 0x00, 0x11, 0x00},
+		{0xFF, 0xFF, 0xFF, 0xFF},
+	} {
+		f.Add(seed)
+	}
+
+	f.Fuzz(func(t *testing.T, data []byte) {
+		runes := make([]rune, len(data)/4)
+		for i := range runes {
+			runes[i] = rune(uint32(data[4*i]) |
+				uint32(data[4*i+1])<<8 |
+				uint32(data[4*i+2])<<16 |
+				uint32(data[4*i+3])<<24)
+		}
+		got, want := Encode(runes), stdutf16.Encode(runes)
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("Encode(%U) = %X, want %X", runes, got, want)
+		}
+		if cap(got) != cap(want) {
+			t.Fatalf("cap(Encode(%U)) = %d, want %d", runes, cap(got), cap(want))
 		}
 	})
 }

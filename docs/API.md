@@ -49,12 +49,15 @@ import "github.com/gosimd/unicode/utf16"
 
 `github.com/gosimd/unicode/utf16` mirrors the Go 1.27rc1 `unicode/utf16` API:
 `IsSurrogate`, `DecodeRune`, `EncodeRune`, `RuneLen`, `Encode`, `AppendRune`,
-and `Decode`. All operations other than `Decode` delegate directly to the
-standard library. On arm64 with `GOEXPERIMENT=simd`, `Decode` uses NEON for
-eight-code-unit chunks with no surrogates; on amd64 it requires AVX2. Chunks
-containing surrogates and every unsupported build use standard-library
-semantics. Compile-time function-type checks keep the compatibility surface
-synchronized with the standard-library baseline.
+and `Decode`. On arm64 with `GOEXPERIMENT=simd`, `Decode` uses NEON for
+eight-code-unit chunks with no surrogates, and `Encode` narrows eight-rune
+chunks when every rune is a valid BMP code point outside the surrogate range.
+On amd64, both operations require AVX2; `Encode` uses two four-rune vectors
+and packs them into eight UTF-16 code units. Chunks containing surrogates,
+non-BMP, or invalid runes use the scalar path, preserving
+`unicode/utf16.Encode` semantics and result capacity. Unsupported builds
+delegate to the standard library. Compile-time function-type checks keep the
+compatibility surface synchronized with the standard-library baseline.
 
 ## Root package
 

@@ -8,6 +8,7 @@ import (
 )
 
 var benchRunesSink []rune
+var benchCodeUnitsSink []uint16
 
 func BenchmarkDecode(b *testing.B) {
 	for _, input := range utf16BenchmarkInputs() {
@@ -25,6 +26,27 @@ func BenchmarkDecode(b *testing.B) {
 				b.SetBytes(int64(len(input.data) * 2))
 				for b.Loop() {
 					benchRunesSink = decodeSIMD(input.data, out)
+				}
+			})
+		})
+	}
+}
+
+func BenchmarkEncode(b *testing.B) {
+	for _, input := range utf16BenchmarkRuneInputs() {
+		b.Run(input.name, func(b *testing.B) {
+			b.Run("stdlib_encode", func(b *testing.B) {
+				b.ReportAllocs()
+				b.SetBytes(int64(len(input.data) * 4))
+				for b.Loop() {
+					benchCodeUnitsSink = stdutf16.Encode(input.data)
+				}
+			})
+			b.Run("gosimd_encode", func(b *testing.B) {
+				b.ReportAllocs()
+				b.SetBytes(int64(len(input.data) * 4))
+				for b.Loop() {
+					benchCodeUnitsSink = Encode(input.data)
 				}
 			})
 		})
@@ -54,8 +76,35 @@ func utf16BenchmarkInputs() []struct {
 	}
 }
 
+func utf16BenchmarkRuneInputs() []struct {
+	name string
+	data []rune
+} {
+	const sixtyFourKiBRunes = 64 * 1024 / 4
+
+	return []struct {
+		name string
+		data []rune
+	}{
+		{name: "empty", data: nil},
+		{name: "ascii_64KiB", data: repeatRunes(sixtyFourKiBRunes, []rune("ASCII text "))},
+		{name: "bmp_mixed_64KiB", data: repeatRunes(sixtyFourKiBRunes, []rune{'G', 'o', ' ', 0x0416, 0x0435, 0x043B, 0x0442, 0x043E, ' ', 0x4E16, 0x754C, ' '})},
+		{name: "sparse_non_bmp_64KiB", data: repeatRunes(sixtyFourKiBRunes, []rune{'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 0x1F600, 'i', 'j', 'k', 'l'})},
+		{name: "dense_non_bmp_64KiB", data: repeatRunes(sixtyFourKiBRunes, []rune{0x1F600, 0x1F680})},
+		{name: "invalid_64KiB", data: repeatRunes(sixtyFourKiBRunes, []rune{'a', 0xD800, 0x110000, -1, 'b'})},
+	}
+}
+
 func repeatCodeUnits(length int, pattern []uint16) []uint16 {
 	data := make([]uint16, length)
+	for i := range data {
+		data[i] = pattern[i%len(pattern)]
+	}
+	return data
+}
+
+func repeatRunes(length int, pattern []rune) []rune {
+	data := make([]rune, length)
 	for i := range data {
 		data[i] = pattern[i%len(pattern)]
 	}

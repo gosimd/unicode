@@ -13,8 +13,9 @@ UTF-8 package.
 
 The UTF-16 package, `github.com/gosimd/unicode/utf16`, mirrors
 `unicode/utf16`. Its `Decode` function selects a whole-buffer SIMD path on
-arm64 with NEON or amd64 with AVX2 when `GOEXPERIMENT=simd` is enabled. Its
-other functions are standard-library facades.
+arm64 with NEON or amd64 with AVX2 when `GOEXPERIMENT=simd` is enabled.
+`Encode` additionally selects a SIMD path for clean BMP blocks on arm64 and
+AVX2-equipped amd64. Its other functions are standard-library facades.
 
 ## Validation dispatch
 
@@ -82,6 +83,22 @@ the public `Decode` allocation and its standard-library-compatible result.
 When at least 32 code units remain, it probes and widens four 8-unit NEON
 chunks in one unrolled iteration; chunks containing a surrogate continue
 through the existing 8-unit/scalar path.
+
+## SIMD UTF-16 encoding
+
+`utf16.Encode` first computes the exact standard-library allocation length:
+every input rune at or above `U+10000` reserves a second code unit, even when
+that rune is invalid. On arm64 with `GOEXPERIMENT=simd`, the encoder then
+classifies two four-rune NEON vectors at a time. When all eight lanes are
+valid BMP code points outside `U+D800`–`U+DFFF`, `VXTN` narrows both vectors;
+their low 64-bit halves are interleaved and stored as eight contiguous
+`uint16` values. On AVX2-equipped amd64, it classifies the same two
+four-rune blocks and uses `VPACKUSDW` to pack them into the output vector;
+the clean-BMP predicate makes saturating packing equivalent to narrowing.
+A rejected eight-rune block is encoded scalarly, covering non-BMP code
+points, surrogate values, and invalid runes with exact `unicode/utf16.Encode`
+output and result capacity. amd64 without AVX2 and all unsupported builds
+delegate `Encode` to the standard library.
 
 ## SIMD rune counting
 

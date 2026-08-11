@@ -46,9 +46,11 @@ and uses a SIMD one-pass validator/counter for valid UTF-8 when supported. See
 `github.com/gosimd/unicode/utf16` mirrors `unicode/utf16`, so an existing
 standard-library import can be replaced without changing call sites. Its
 `Decode` function widens eight-code-unit blocks without surrogates with NEON
-on arm64 or AVX2 on amd64 when built with `GOEXPERIMENT=simd`; malformed and
-surrogate-containing input retains standard-library semantics. The remaining
-functions delegate to the standard library.
+on arm64 or AVX2 on amd64 when built with `GOEXPERIMENT=simd`. On arm64 and
+AVX2-equipped amd64, `Encode` narrows eight-rune blocks when every rune is a
+valid non-surrogate BMP code point. Blocks containing non-BMP, surrogate, or
+invalid runes retain the standard-library scalar behaviour; unsupported builds
+delegate to the standard library.
 
 ## Architecture and platform support
 

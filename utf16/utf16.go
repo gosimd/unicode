@@ -1,8 +1,8 @@
 // Package utf16 implements UTF-16 encoding and decoding.
 //
 // It is API-compatible with the Go standard library's unicode/utf16 package.
-// The current implementation delegates to the standard library; SIMD
-// acceleration may be added for whole-buffer operations in the future.
+// Whole-buffer Decode and Encode use SIMD on supported builds; all other
+// operations delegate to the standard library.
 package utf16
 
 import stdutf16 "unicode/utf16"
@@ -32,7 +32,7 @@ func RuneLen(r rune) int {
 
 // Encode returns the UTF-16 encoding of s.
 func Encode(s []rune) []uint16 {
-	return stdutf16.Encode(s)
+	return encode(s)
 }
 
 // AppendRune appends the UTF-16 encoding of r to a and returns the result.
