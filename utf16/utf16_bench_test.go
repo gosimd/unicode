@@ -14,7 +14,6 @@ func BenchmarkDecode(b *testing.B) {
 	for _, input := range utf16BenchmarkInputs() {
 		b.Run(input.name, func(b *testing.B) {
 			b.Run("stdlib_decode", func(b *testing.B) {
-				b.ReportAllocs()
 				b.SetBytes(int64(len(input.data) * 2))
 				for b.Loop() {
 					benchRunesSink = stdutf16.Decode(input.data)
@@ -22,7 +21,6 @@ func BenchmarkDecode(b *testing.B) {
 			})
 			b.Run("simd_core", func(b *testing.B) {
 				out := make([]rune, len(input.data))
-				b.ReportAllocs()
 				b.SetBytes(int64(len(input.data) * 2))
 				for b.Loop() {
 					benchRunesSink = decodeSIMD(input.data, out)
@@ -36,19 +34,20 @@ func BenchmarkEncode(b *testing.B) {
 	for _, input := range utf16BenchmarkRuneInputs() {
 		b.Run(input.name, func(b *testing.B) {
 			b.Run("stdlib_encode", func(b *testing.B) {
-				b.ReportAllocs()
-				b.SetBytes(int64(len(input.data) * 4))
+				b.SetBytes(int64(len(input.data) * 2))
 				for b.Loop() {
 					benchCodeUnitsSink = stdutf16.Encode(input.data)
 				}
 			})
-			b.Run("gosimd_encode", func(b *testing.B) {
-				b.ReportAllocs()
+			b.Run("simd_core", func(b *testing.B) {
+				capacity := encodedLengthSIMD(input.data)
+				out := make([]uint16, capacity)
 				b.SetBytes(int64(len(input.data) * 4))
 				for b.Loop() {
-					benchCodeUnitsSink = Encode(input.data)
+					benchCodeUnitsSink = encodeSIMD(input.data, out, capacity)
 				}
 			})
+
 		})
 	}
 }
