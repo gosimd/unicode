@@ -48,7 +48,7 @@ func utf16BenchmarkInputs() []struct {
 		{name: "ascii_64KiB", data: repeatCodeUnits(sixtyFourKiBUnits, []uint16{'A', 'S', 'C', 'I', 'I', ' ', 't', 'e', 'x', 't', ' '})},
 		{name: "bmp_mixed_64KiB", data: repeatCodeUnits(sixtyFourKiBUnits, []uint16{'G', 'o', ' ', 0x0416, 0x0435, 0x043B, 0x0442, 0x043E, ' ', 0x4E16, 0x754C, ' '})},
 		{name: "dense_surrogates_64KiB", data: repeatCodeUnits(sixtyFourKiBUnits, []uint16{0xD83D, 0xDE00, 0xD83D, 0xDE80})},
-		{name: "sparse_surrogates_64KiB", data: repeatCodeUnits(sixtyFourKiBUnits, []uint16{'a', 'b', 'c', 'd', 'e', 'f', 'g', 0xD83D, 0xDE00})},
+		{name: "sparse_surrogates_64KiB", data: repeatCodeUnits(sixtyFourKiBUnits, []uint16{'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 0xD83D, 0xDE00, 'j', 'k', 'l', 'm', 'n', 'o'})},
 		{name: "unpaired_surrogates_64KiB", data: repeatCodeUnits(sixtyFourKiBUnits, []uint16{'a', 'b', 'c', 'd', 'e', 'f', 'g', 0xD800, 'h'})},
 	}
 }
