@@ -79,6 +79,9 @@ The ARM64 NEON clean-chunk loop takes a caller-provided output buffer. It
 checks its capacity once, then uses `unsafe.Add` with fixed-size array SIMD
 loads and stores. This removes per-chunk slice bounds checks while preserving
 the public `Decode` allocation and its standard-library-compatible result.
+When at least 32 code units remain, it probes and widens four 8-unit NEON
+chunks in one unrolled iteration; chunks containing a surrogate continue
+through the existing 8-unit/scalar path.
 
 ## SIMD rune counting
 
