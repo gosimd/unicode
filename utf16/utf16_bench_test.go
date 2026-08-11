@@ -1,10 +1,10 @@
-package utf16_test
+//go:build goexperiment.simd && (amd64 || arm64)
+
+package utf16
 
 import (
 	"testing"
 	stdutf16 "unicode/utf16"
-
-	simdutf16 "github.com/gosimd/unicode/utf16"
 )
 
 var benchRunesSink []rune
@@ -12,18 +12,19 @@ var benchRunesSink []rune
 func BenchmarkDecode(b *testing.B) {
 	for _, input := range utf16BenchmarkInputs() {
 		b.Run(input.name, func(b *testing.B) {
-			b.Run("stdlib", func(b *testing.B) {
+			b.Run("stdlib_decode", func(b *testing.B) {
 				b.ReportAllocs()
 				b.SetBytes(int64(len(input.data) * 2))
 				for b.Loop() {
 					benchRunesSink = stdutf16.Decode(input.data)
 				}
 			})
-			b.Run("simd", func(b *testing.B) {
+			b.Run("simd_core", func(b *testing.B) {
+				out := make([]rune, len(input.data))
 				b.ReportAllocs()
 				b.SetBytes(int64(len(input.data) * 2))
 				for b.Loop() {
-					benchRunesSink = simdutf16.Decode(input.data)
+					benchRunesSink = decodeSIMD(input.data, out)
 				}
 			})
 		})

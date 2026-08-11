@@ -75,6 +75,11 @@ sequences have the exact
 `unicode/utf16.Decode` result. Unsupported builds, including amd64 without
 AVX2, delegate to the standard library.
 
+The ARM64 NEON clean-chunk loop takes a caller-provided output buffer. It
+checks its capacity once, then uses `unsafe.Add` with fixed-size array SIMD
+loads and stores. This removes per-chunk slice bounds checks while preserving
+the public `Decode` allocation and its standard-library-compatible result.
+
 ## SIMD rune counting
 
 `RuneCount` validates and counts valid input in one traversal. The same

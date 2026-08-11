@@ -23,7 +23,8 @@ func decode(s []uint16) []rune {
 		return stdutf16.Decode(s)
 	}
 
-	return decodeSIMD(s)
+	out := make([]rune, len(s))
+	return decodeSIMD(s, out)
 }
 
 // decodeScalar decodes s[i:end] with the same replacement and surrogate-pair

@@ -6,8 +6,8 @@ import "simd/archsimd"
 
 // decodeSIMD widens clean BMP chunks with AVX2. A chunk containing a
 // surrogate is decoded scalarly, preserving unicode/utf16.Decode semantics.
-func decodeSIMD(s []uint16) []rune {
-	out := make([]rune, len(s))
+// The caller owns out, which must have room for len(s) runes.
+func decodeSIMD(s []uint16, out []rune) []rune {
 	mask := archsimd.BroadcastUint16x8(surrogateMask)
 	marker := archsimd.BroadcastUint16x8(surrogateHighStart)
 	i, n := 0, 0
