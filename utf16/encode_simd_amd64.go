@@ -35,6 +35,7 @@ func encodeSIMD(s []rune, out []uint16, outputCapacity int) []uint16 {
 	bmpAfterSurrogates := archsimd.BroadcastUint32x4(surrogateEnd)
 	needsSurrogates := archsimd.BroadcastUint32x4(surrogateOffset)
 	inputBase := unsafe.Pointer(unsafe.SliceData(s))
+	outputBase := unsafe.Pointer(unsafe.SliceData(out))
 	i, n := 0, 0
 	for i < len(s) {
 		if len(s)-i >= 2*encodeSIMDChunkSize {
@@ -44,7 +45,8 @@ func encodeSIMD(s []rune, out []uint16, outputCapacity int) []uint16 {
 				cleanBMPChunk(chunk1, bmpBeforeSurrogates, bmpAfterSurrogates, needsSurrogates) {
 				// The clean-BMP predicate guarantees all values fit in uint16,
 				// so saturating packing is identical to truncating narrowing.
-				chunk0.BitsToInt32().SaturateToUint16Concat(chunk1.BitsToInt32()).Store(out[n:])
+				packed := chunk0.BitsToInt32().SaturateToUint16Concat(chunk1.BitsToInt32())
+				packed.StoreArray((*[8]uint16)(unsafe.Add(outputBase, uintptr(n)*2)))
 				i += 2 * encodeSIMDChunkSize
 				n += 2 * encodeSIMDChunkSize
 				continue
