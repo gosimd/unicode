@@ -19,6 +19,13 @@ func BenchmarkDecode(b *testing.B) {
 					benchRunesSink = stdutf16.Decode(input.data)
 				}
 			})
+			b.Run("stdlib_core", func(b *testing.B) {
+				out := make([]rune, 0, len(input.data))
+				b.SetBytes(int64(len(input.data) * 2))
+				for b.Loop() {
+					benchRunesSink = decodeStdlibCore(input.data, out[:0])
+				}
+			})
 			b.Run("simd_core", func(b *testing.B) {
 				out := make([]rune, len(input.data))
 				b.SetBytes(int64(len(input.data) * 2))
@@ -28,6 +35,26 @@ func BenchmarkDecode(b *testing.B) {
 			})
 		})
 	}
+}
+
+// decodeStdlibCore is the Go 1.27rc1 unicode/utf16.decode loop with its
+// caller-owned buffer exposed for a no-allocation benchmark comparison.
+func decodeStdlibCore(s []uint16, buf []rune) []rune {
+	for i := 0; i < len(s); i++ {
+		var ar rune
+		switch r := s[i]; {
+		case r < surrogateHighStart, surrogateEnd <= r:
+			ar = rune(r)
+		case surrogateHighStart <= r && r < surrogateLowStart && i+1 < len(s) &&
+			surrogateLowStart <= s[i+1] && s[i+1] < surrogateEnd:
+			ar = stdutf16.DecodeRune(rune(r), rune(s[i+1]))
+			i++
+		default:
+			ar = replacementRune
+		}
+		buf = append(buf, ar)
+	}
+	return buf
 }
 
 func BenchmarkEncode(b *testing.B) {
