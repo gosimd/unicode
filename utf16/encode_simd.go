@@ -2,6 +2,13 @@
 
 package utf16
 
+// encodingPlan is computed during the mandatory length pass. mode is
+// architecture-specific and is intentionally kept internal.
+type encodingPlan struct {
+	capacity int
+	mode     uint8
+}
+
 func encodeScalar(s []rune, out []uint16, i, n, end int) (int, int) {
 	for i < end {
 		r := s[i]

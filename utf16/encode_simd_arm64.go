@@ -13,9 +13,17 @@ const encodeSIMDChunkSize = 4
 // outside the surrogate range. All other blocks use the scalar encoder, so
 // the result and capacity match unicode/utf16.Encode for malformed runes too.
 func encode(s []rune) []uint16 {
-	capacity := encodedLengthSIMD(s)
-	out := make([]uint16, capacity)
-	return encodeSIMD(s, out, capacity)
+	plan := planEncodeSIMD(s)
+	out := make([]uint16, plan.capacity)
+	return encodeSIMDWithPlan(s, out, plan)
+}
+
+func planEncodeSIMD(s []rune) encodingPlan {
+	return encodingPlan{capacity: encodedLengthSIMD(s)}
+}
+
+func encodeSIMDWithPlan(s []rune, out []uint16, plan encodingPlan) []uint16 {
+	return encodeSIMD(s, out, plan.capacity)
 }
 
 // encodeSIMD encodes s into out. out must have room for the maximum encoded

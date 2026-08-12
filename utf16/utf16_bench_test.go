@@ -60,28 +60,60 @@ func decodeStdlibCore(s []uint16, buf []rune) []rune {
 func BenchmarkEncode(b *testing.B) {
 	for _, input := range utf16BenchmarkRuneInputs() {
 		b.Run(input.name, func(b *testing.B) {
-			b.Run("stdlib_encode", func(b *testing.B) {
-				b.SetBytes(int64(len(input.data) * 2))
+			// Every rune can expand to two UTF-16 code units. Allocate the
+			// reusable buffer before timing; each benchmark iteration measures
+			// length calculation and encoding only.
+			out := make([]uint16, 2*len(input.data))
+
+			b.Run("stdlib_core", func(b *testing.B) {
+				b.SetBytes(int64(len(input.data) * 4))
 				for b.Loop() {
-					benchCodeUnitsSink = stdutf16.Encode(input.data)
+					capacity := encodedLengthStdlib(input.data)
+					benchCodeUnitsSink = encodeStdlibCore(input.data, out[:capacity])
 				}
 			})
 			b.Run("simd_core", func(b *testing.B) {
-				capacity := encodedLengthSIMD(input.data)
-				out := make([]uint16, capacity)
 				b.SetBytes(int64(len(input.data) * 4))
 				for b.Loop() {
-					benchCodeUnitsSink = encodeSIMD(input.data, out, capacity)
-				}
-			})
-			b.Run("simd_total", func(b *testing.B) {
-				b.SetBytes(int64(len(input.data) * 2))
-				for b.Loop() {
-					benchCodeUnitsSink = Encode(input.data)
+					plan := planEncodeSIMD(input.data)
+					benchCodeUnitsSink = encodeSIMDWithPlan(input.data, out, plan)
 				}
 			})
 		})
 	}
+}
+
+// encodedLengthStdlib is the first loop of Go 1.27rc1 unicode/utf16.Encode.
+func encodedLengthStdlib(s []rune) int {
+	n := len(s)
+	for _, r := range s {
+		if r >= surrogateOffset {
+			n++
+		}
+	}
+	return n
+}
+
+// encodeStdlibCore is the encoding loop of Go 1.27rc1 unicode/utf16.Encode,
+// exposed here to benchmark it with a caller-owned output buffer.
+func encodeStdlibCore(s []rune, out []uint16) []uint16 {
+	n := 0
+	for _, r := range s {
+		switch stdutf16.RuneLen(r) {
+		case 1:
+			out[n] = uint16(r)
+			n++
+		case 2:
+			r1, r2 := stdutf16.EncodeRune(r)
+			out[n] = uint16(r1)
+			out[n+1] = uint16(r2)
+			n += 2
+		default:
+			out[n] = uint16(replacementRune)
+			n++
+		}
+	}
+	return out[:n]
 }
 
 func utf16BenchmarkInputs() []struct {
