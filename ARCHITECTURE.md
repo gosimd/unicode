@@ -69,10 +69,13 @@ See [docs/Valid.md](docs/Valid.md) for the detailed algorithm.
 surrogates with the equivalent bit test `codeUnit & 0xF800 == 0xD800`.
 Architecture-specific loops prepare those two vector constants once before
 processing chunks. Clean chunks are zero-extended into `rune` values: NEON
-widens two groups of four lanes, while AVX2 widens all eight lanes. A chunk
-with any surrogate is decoded by the scalar state machine one code unit at a
-time, so a high surrogate at a vector boundary, valid pairs, and malformed
-sequences have the exact
+widens two groups of four lanes, while AVX2 widens all eight lanes. The AVX2
+surrogate predicate uses `VPMOVMSKB` over an AVX comparison vector; it does
+not use AVX-512 mask registers. AVX-512-capable AMD64 hosts select a separate
+16-code-unit implementation which uses mask registers and a 512-bit
+widen/store. A chunk with any
+surrogate is decoded by the scalar state machine one code unit at a time, so a
+high surrogate at a vector boundary, valid pairs, and malformed sequences have the exact
 `unicode/utf16.Decode` result. Unsupported builds, including amd64 without
 AVX2, delegate to the standard library.
 

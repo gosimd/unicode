@@ -2,34 +2,15 @@
 
 package utf16
 
-import "simd/archsimd"
+import (
+	"simd/archsimd"
+)
 
-// decodeSIMD widens clean BMP chunks with AVX2. A chunk containing a
-// surrogate is decoded scalarly, preserving unicode/utf16.Decode semantics.
-// The caller owns out, which must have room for len(s) runes.
+// decodeSIMD dispatches to the AVX-512 or AVX2 implementation. The caller
+// owns out, which must have room for len(s) runes.
 func decodeSIMD(s []uint16, out []rune) []rune {
-	mask := archsimd.BroadcastUint16x8(surrogateMask)
-	marker := archsimd.BroadcastUint16x8(surrogateHighStart)
-	i, n := 0, 0
-	for i < len(s) {
-		if len(s)-i >= decodeSIMDChunkSize {
-			chunk := archsimd.LoadUint16x8(s[i:])
-			surrogates := chunk.And(mask).Equal(marker)
-			if surrogates.ToBits() == 0 {
-				chunk.ExtendToUint32().BitsToInt32().Store(out[n:])
-				i += decodeSIMDChunkSize
-				n += decodeSIMDChunkSize
-				continue
-			}
-		}
-
-		// Decode an entire rejected chunk scalarly before testing the next one.
-		// Testing after every scalar rune regresses inputs with dense surrogates.
-		end := i + decodeSIMDChunkSize
-		if end > len(s) {
-			end = len(s)
-		}
-		i, n = decodeScalar(s, out, i, n, end)
+	if archsimd.X86.AVX512() {
+		return decodeAVX512(s, out)
 	}
-	return out[:n]
+	return decodeAVX2(s, out)
 }
