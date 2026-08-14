@@ -98,11 +98,17 @@ previous explicit `0x80` broadcast and mask.
 
 ## AMD64
 
-AMD64 requires AVX2 at runtime. Its current predicate is intentionally kept
+AMD64 requires AVX2 at runtime. Its AVX2 predicate is intentionally kept
 separate from the ARM64 fused implementation: it builds actual-continuation and
 expected-continuation masks, rejects invalid leading bytes, and applies the
 four exceptional second-byte checks. The same vector incomplete-sequence marker
 is used at full-chunk boundaries.
+
+On AVX-512 hosts, the validator first tests every 512-byte window for ASCII.
+Clean windows are accepted immediately; a window containing a non-ASCII byte is
+then checked as eight native 64-byte AVX-512 vectors. This lets a later ASCII
+region return to the cheap path after a rare emoji, while a continuation that
+crosses a window boundary is still checked by the full predicate.
 
 ## Performance notes
 

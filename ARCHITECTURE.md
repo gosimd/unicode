@@ -51,15 +51,19 @@ allocate.
 | `valid_predicates_arm64.go` | NEON fused validation predicate and incomplete-sequence carry. |
 | `ascii_arm64.go` | NEON ASCII detector using a signed minimum. |
 | `valid_predicates_amd64.go` | AVX2 validation predicate and incomplete-sequence carry. |
+| `valid_simd_avx2.go` | AVX2 dispatcher and wide ASCII fast path. |
+| `valid_simd_avx512.go` | AVX-512 per-512-byte ASCII shortcut and native wide validator. |
 | `ascii_amd64.go` | amd64 ASCII detector. |
 | `lookup_*`, `zero_*` | Architecture-specific table lookup and zero reduction helpers. |
 | `valid_fallback.go`, `rune_count_fallback.go` | Non-SIMD standard-library fallbacks. |
 
-The common loop works on four 16-byte vectors (64 bytes) where possible. It
-uses a cheap ASCII path; a non-ASCII block is checked as four adjacent UTF-8
-chunks. The previous chunk and the incomplete-sequence marker preserve state at
-block boundaries. A final tail shorter than 16 bytes is validated with a small
-scalar state machine.
+The ARM64 and AVX2 loops work on four 16-byte vectors (64 bytes) where
+possible. They use a cheap ASCII path; a non-ASCII block is checked as four
+adjacent UTF-8 chunks. The previous chunk and the incomplete-sequence marker
+preserve state at block boundaries. The AVX-512 loop instead tests every
+512-byte window for ASCII and validates only dirty windows with eight native
+64-byte vectors. A final short tail is validated with a small scalar state
+machine.
 
 See [docs/Valid.md](docs/Valid.md) for the detailed algorithm.
 
