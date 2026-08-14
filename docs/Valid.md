@@ -66,11 +66,14 @@ is present. This keeps the common full-block path entirely vector-based.
 
 ## `RuneCount`
 
-`RuneCount` uses the same block sizes, validation predicates, and boundary
-carry as `Valid`, but fuses counting into that traversal. For a well-formed
-UTF-8 buffer, each continuation byte belongs to a preceding rune, so the result
-is `len(p) - continuationCount`. The continuation predicate is computed as a
-SIMD mask and reduced with two 64-bit population counts per 16-byte chunk.
+`RuneCount` uses the same validation predicates and boundary carry as `Valid`,
+but fuses counting into that traversal. For a well-formed UTF-8 buffer, each
+continuation byte belongs to a preceding rune, so the result is
+`len(p) - continuationCount`. NEON and AVX2 reduce continuation masks in their
+16-byte loops. On AVX-512, the lookup validator already produces a vector with
+`0x80` at every required continuation position. `VPSADBW` accumulates those
+bytes into eight 64-bit lanes while validating each 64-byte vector; the lanes
+are reduced once after the full 512-byte windows have been processed.
 
 Malformed input cannot use that identity: `unicode/utf8.RuneCount` treats each
 erroneous or short byte as a width-1 error rune. If the SIMD validator finds an
@@ -112,6 +115,12 @@ single accumulated error reduction per 512-byte window. A 64-bit permutation
 prepares the predecessor of each 128-bit shuffle group so sequences crossing
 either a group or vector boundary remain validatable. This lets a later ASCII
 region return to the cheap path after a rare emoji.
+
+`RuneCount` uses the same AVX-512 lookup loop. It accumulates the existing
+expected-continuation bytes with `VPSADBW` and `VPADDQ`, avoiding per-vector
+mask extraction and scalar population counts. Inputs shorter than one
+512-byte window retain the AVX2 path, and the final shorter tail is completed
+with the shared scalar UTF-8 state machine.
 
 ## Performance notes
 

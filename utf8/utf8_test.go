@@ -244,6 +244,41 @@ func TestRuneCountPrefixSweepMatchesStandardLibrary(t *testing.T) {
 	}
 }
 
+func TestRuneCountWideBoundaryMatchesStandardLibrary(t *testing.T) {
+	appendBytes := func(prefix []byte, suffix ...byte) []byte {
+		return append(append([]byte(nil), prefix...), suffix...)
+	}
+
+	tests := []struct {
+		name string
+		data []byte
+	}{
+		{name: "ascii before window", data: bytes.Repeat([]byte{'a'}, 511)},
+		{name: "ascii exact window", data: bytes.Repeat([]byte{'a'}, 512)},
+		{name: "ascii after window", data: bytes.Repeat([]byte{'a'}, 513)},
+		{name: "two byte across window", data: appendBytes(bytes.Repeat([]byte{'a'}, 511), []byte("¢")...)},
+		{name: "three byte across window", data: appendBytes(bytes.Repeat([]byte{'a'}, 510), []byte("世")...)},
+		{name: "four byte across window", data: appendBytes(bytes.Repeat([]byte{'a'}, 509), []byte("😀")...)},
+		{name: "dirty then ascii", data: append(bytes.Repeat([]byte("世"), 171), bytes.Repeat([]byte{'a'}, 512)...)},
+		{name: "ascii then dirty", data: append(bytes.Repeat([]byte{'a'}, 512), bytes.Repeat([]byte("世界😀"), 64)...)},
+		{name: "truncated at window", data: appendBytes(bytes.Repeat([]byte{'a'}, 510), 0xe2, 0x82)},
+		{name: "stray continuation after window", data: appendBytes(bytes.Repeat([]byte{'a'}, 512), 0x80)},
+		{name: "overlong across window", data: appendBytes(bytes.Repeat([]byte{'a'}, 511), 0xc0, 0xaf)},
+		{name: "invalid second byte across window", data: appendBytes(bytes.Repeat([]byte{'a'}, 511), 0xe0, 0x80, 0x80)},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got, want := simdutf8.RuneCount(tt.data), stdutf8.RuneCount(tt.data); got != want {
+				t.Fatalf("RuneCount(% x) = %d, want %d", tt.data, got, want)
+			}
+			if got, want := simdutf8.RuneCountInString(string(tt.data)), stdutf8.RuneCountInString(string(tt.data)); got != want {
+				t.Fatalf("RuneCountInString(% x) = %d, want %d", tt.data, got, want)
+			}
+		})
+	}
+}
+
 func TestRuneLenMatchesStandardLibrary(t *testing.T) {
 	tests := []rune{
 		-1,

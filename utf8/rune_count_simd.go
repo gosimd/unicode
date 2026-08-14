@@ -12,6 +12,9 @@ import (
 // RuneCount returns the number of runes in p. Erroneous and short encodings
 // are treated as single runes of width 1 byte.
 func RuneCount(p []byte) int {
+	if len(p) == 0 {
+		return 0
+	}
 	if runtime.GOARCH == "amd64" && !archsimd.X86.AVX2() {
 		return stdutf8.RuneCount(p)
 	}
@@ -31,10 +34,10 @@ func RuneCountInString(s string) int {
 	return RuneCount(unsafe.Slice(unsafe.StringData(s), len(s)))
 }
 
-// runeCountSIMD validates and counts p in one pass. On malformed input it
-// returns false so RuneCount can preserve unicode/utf8's width-1 error-rune
-// semantics with its scalar fallback.
-func runeCountSIMD(p []byte) (int, bool) {
+// runeCountSIMD128 validates and counts p in one pass using 16-byte vectors.
+// On malformed input it returns false so RuneCount can preserve unicode/utf8's
+// width-1 error-rune semantics with its scalar fallback.
+func runeCountSIMD128(p []byte) (int, bool) {
 	p = p[:len(p):len(p)]
 	const offset1 = simdChunkSize
 	const offset2 = 2 * simdChunkSize

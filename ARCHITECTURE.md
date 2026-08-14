@@ -27,8 +27,9 @@ gosimd/unicode/utf8.Valid([]byte)
 gosimd/unicode/utf8.RuneCount([]byte)
         |
         +-- arm64 + GOEXPERIMENT=simd -> NEON implementation
-        +-- amd64 + GOEXPERIMENT=simd + AVX2 -> SIMD implementation
-        +-- otherwise -> unicode/utf8.Valid
+        +-- amd64 + GOEXPERIMENT=simd + AVX-512 -> native 512-bit implementation
+        +-- amd64 + GOEXPERIMENT=simd + AVX2 -> 128-bit implementation
+        +-- otherwise -> matching unicode/utf8 function
 ```
 
 The fallback is part of the correctness contract, not an exceptional path.
@@ -45,7 +46,8 @@ allocate.
 | File group | Responsibility |
 | --- | --- |
 | `valid_simd.go` | SIMD `Valid` and `ValidString` entry points. |
-| `rune_count_simd.go` | SIMD `RuneCount`, `RuneCountInString`, and counting loop. |
+| `rune_count_simd.go` | SIMD `RuneCount`, `RuneCountInString`, and shared 128-bit counting loop. |
+| `rune_count_simd_avx512.go` | AVX-512 lookup validator and fused continuation-byte sum. |
 | `continuation_count_*.go` | Architecture-specific continuation-mask reduction for rune counting. |
 | `utf8_simd_common.go` | Shared chunk sizes, byte classification, scalar tail state, and masks. |
 | `valid_predicates_arm64.go` | NEON fused validation predicate and incomplete-sequence carry. |
@@ -111,12 +113,14 @@ delegate `Encode` to the standard library.
 
 ## SIMD rune counting
 
-`RuneCount` validates and counts valid input in one traversal. The same
-64-byte/16-byte shapes and boundary carry as `Valid` establish that each
-continuation byte belongs to a well-formed rune. The count is then the number
-of bytes minus the SIMD-popcounted continuation bytes. If validation fails, it
-falls back to `unicode/utf8.RuneCount`, which preserves its requirement that
-each malformed or truncated byte is a width-1 error rune.
+`RuneCount` validates and counts valid input in one traversal. NEON and AVX2
+use the 64-byte/16-byte shapes and boundary carry from `Valid`, then subtract
+the population count of continuation masks. AVX-512 uses the native lookup
+validator on 512-byte windows. Its expected-continuation vector contains
+`0x80` for every continuation position; `VPSADBW` accumulates those values in
+eight 64-bit lanes, which are reduced once at the end. If validation fails,
+the implementation falls back to `unicode/utf8.RuneCount`, preserving the
+requirement that each malformed or truncated byte is a width-1 error rune.
 
 ## Correctness and performance policy
 
