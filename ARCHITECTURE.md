@@ -28,7 +28,7 @@ gosimd/unicode/utf8.RuneCount([]byte)
         |
         +-- arm64 + GOEXPERIMENT=simd -> NEON implementation
         +-- amd64 + GOEXPERIMENT=simd + AVX-512 -> native 512-bit implementation
-        +-- amd64 + GOEXPERIMENT=simd + AVX2 -> 128-bit implementation
+        +-- amd64 + GOEXPERIMENT=simd + AVX2 -> AVX2 implementations
         +-- otherwise -> matching unicode/utf8 function
 ```
 
@@ -52,22 +52,22 @@ allocate.
 | `utf8_simd_common.go` | Shared chunk sizes, byte classification, scalar tail state, and masks. |
 | `valid_predicates_arm64.go` | NEON fused validation predicate and incomplete-sequence carry. |
 | `ascii_arm64.go` | NEON ASCII detector using a signed minimum. |
-| `valid_predicates_amd64.go` | AVX2 validation predicate and incomplete-sequence carry. |
-| `valid_simd_avx2.go` | AVX2 dispatcher and wide ASCII fast path. |
+| `valid_predicates_amd64.go` | 128-bit amd64 baseline predicate and incomplete-sequence carry. |
+| `valid_simd_avx2.go` | Native 256-bit AVX2 validator, grouped carry, and wide ASCII fast path. |
 | `valid_simd_avx512.go` | AVX-512 per-512-byte ASCII shortcut and lookup-based native wide validator. |
 | `ascii_amd64.go` | amd64 ASCII detector. |
 | `lookup_*`, `zero_*` | Architecture-specific table lookup and zero reduction helpers. |
 | `valid_fallback.go`, `rune_count_fallback.go` | Non-SIMD standard-library fallbacks. |
 
-The ARM64 and AVX2 loops work on four 16-byte vectors (64 bytes) where
-possible. They use a cheap ASCII path; a non-ASCII block is checked as four
-adjacent UTF-8 chunks. The previous chunk and the incomplete-sequence marker
-preserve state at block boundaries. The AVX-512 loop instead tests every
-512-byte window for ASCII and validates only dirty windows with eight native
-64-byte vectors. It performs three grouped nibble lookups per vector, carries
-the preceding bytes with a 64-bit lane permutation, and reduces accumulated
-errors once per window. A final short tail is validated with a small scalar
-state machine.
+The ARM64 loop and the amd64 baseline work on four 16-byte vectors (64 bytes).
+The primary AVX2 `Valid` path tests 512-byte windows for ASCII and validates
+dirty windows with sixteen native 32-byte vectors. `VPERM2I128` carries bytes
+between each vector's two 128-bit shuffle groups. AVX-512 uses the same window
+shape with eight native 64-byte vectors and a 64-bit lane permutation. Both
+wide paths perform three grouped nibble lookups per vector and reduce
+accumulated errors once per window. A final short tail is validated with a
+small scalar state machine. AVX2 `RuneCount` continues to use the shared
+128-bit loop.
 
 See [docs/Valid.md](docs/Valid.md) for the detailed algorithm.
 

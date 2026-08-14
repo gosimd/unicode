@@ -39,10 +39,12 @@ func BenchmarkValidAMD64NonASCII(b *testing.B) {
 	for _, input := range inputs {
 		b.Run(input.name, func(b *testing.B) {
 			benchmarkValidAMD64Path(b, "stdlib", input.data, stdutf8.Valid)
-			if !archsimd.X86.AVX512() {
-				return
+			if archsimd.X86.AVX2() {
+				benchmarkValidAMD64Path(b, "avx2", input.data, validAVX2)
 			}
-			benchmarkValidAMD64Path(b, "avx512", input.data, validAVX512)
+			if archsimd.X86.AVX512() {
+				benchmarkValidAMD64Path(b, "avx512", input.data, validAVX512)
+			}
 		})
 	}
 }

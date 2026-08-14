@@ -150,39 +150,3 @@ func allASCIIBlock512(p []byte, highBit, zero archsimd.Uint8x64) bool {
 	acc3 := archsimd.LoadUint8x64(p[384:]).Or(archsimd.LoadUint8x64(p[448:]))
 	return acc0.Or(acc1).Or(acc2.Or(acc3)).And(highBit).Equal(zero).ToBits() == ^uint64(0)
 }
-
-// stateForScalarTailBytes reconstructs an incomplete sequence that can begin
-// in the final three bytes of an already-valid SIMD block.
-func stateForScalarTailBytes(b13, b14, b15 byte) (utf8State, bool) {
-	class15 := classifyScalar(b15)
-	if class15 == utf8Invalid {
-		return utf8State{}, false
-	}
-	if class15 == utf8Lead2 || class15 == utf8Lead3 || class15 == utf8Lead4 {
-		var state utf8State
-		if !state.step(b15, class15) {
-			return utf8State{}, false
-		}
-		return state, true
-	}
-
-	if class := classifyScalar(b14); class == utf8Lead3 || class == utf8Lead4 {
-		var state utf8State
-		if !state.step(b14, class) || !state.step(b15, class15) {
-			return utf8State{}, false
-		}
-		return state, true
-	}
-
-	if class := classifyScalar(b13); class == utf8Lead4 {
-		var state utf8State
-		if !state.step(b13, class) ||
-			!state.step(b14, classifyScalar(b14)) ||
-			!state.step(b15, class15) {
-			return utf8State{}, false
-		}
-		return state, true
-	}
-
-	return utf8State{}, true
-}

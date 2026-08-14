@@ -12,7 +12,7 @@ the same validator.
 
 ## Processing shape
 
-The main loop loads 64 bytes as four 16-byte vectors:
+The ARM64 loop and the amd64 baseline load 64 bytes as four 16-byte vectors:
 
 ```text
 chunk0  chunk1  chunk2  chunk3
@@ -20,13 +20,18 @@ chunk0  chunk1  chunk2  chunk3
 ```
 
 ASCII-only blocks use a cheap detector. Non-ASCII blocks are checked as four
-adjacent chunks, passing the preceding chunk to the next check. Passing this
-context is necessary because a multi-byte sequence may cross a 16-byte
-boundary.
+adjacent chunks, passing the preceding chunk to the next check. This baseline
+also handles initial amd64 inputs shorter than 512 bytes.
 
 After 64-byte blocks, the implementation processes any remaining complete
 16-byte chunks. A final tail of 1 to 15 bytes uses a scalar UTF-8 state machine
 because it is too short to load as a vector safely.
+
+For `Valid`, amd64 AVX2 and AVX-512 first scan independent 512-byte windows for
+ASCII. A dirty AVX2 window is validated as sixteen 32-byte vectors; AVX-512
+uses eight 64-byte vectors. Both wide paths accumulate vector errors across the
+window and reduce them once. Later independent ASCII windows can return to the
+cheap scan path.
 
 ## UTF-8 constraints
 
@@ -55,11 +60,11 @@ The continuation requirements from those aligned vectors are combined with the
 actual continuation-byte classes. A non-zero error vector means that the chunk
 is invalid.
 
-At the end of a full chunk, `incompleteSIMDChunk` examines only lanes 13, 14,
-and 15. Saturating subtraction against thresholds `EF`, `DF`, and `BF` marks a
-3-, 2-, or 1-byte continuation requirement that runs past the chunk boundary.
-The next block, or end of input, must consume that state; otherwise the input
-is truncated.
+At the end of a full 128-bit chunk, `incompleteSIMDChunk` examines only lanes
+13, 14, and 15. The wide validators retain the final three bytes explicitly.
+Both representations mark a 3-, 2-, or 1-byte continuation requirement that
+runs past the processed region. The next block, or end of input, must consume
+that state; otherwise the input is truncated.
 
 The scalar tail reconstructs state from the final three bytes only when a tail
 is present. This keeps the common full-block path entirely vector-based.
@@ -101,11 +106,18 @@ previous explicit `0x80` broadcast and mask.
 
 ## AMD64
 
-AMD64 requires AVX2 at runtime. Its AVX2 predicate is intentionally kept
-separate from the ARM64 fused implementation: it builds actual-continuation and
-expected-continuation masks, rejects invalid leading bytes, and applies the
-four exceptional second-byte checks. The same vector incomplete-sequence marker
-is used at full-chunk boundaries.
+AMD64 requires AVX2 at runtime. Inputs shorter than 512 bytes retain the
+128-bit baseline predicate, which builds actual- and expected-continuation
+masks and checks invalid leading bytes independently.
+
+For larger inputs, AVX2 scans 512-byte windows and validates dirty windows as
+sixteen native 32-byte vectors. `VPERM2I128` prepares the predecessor of each
+128-bit shuffle group, and three grouped `VPALIGNR` operations align the prior
+one, two, and three bytes. The same three-table lookup and
+saturating-subtraction model as NEON encodes the UTF-8 constraints. Errors are
+accumulated in a YMM register and reduced once per window with `VPTEST`. An
+explicit three-byte tail preserves state between windows and into the scalar
+remainder.
 
 On AVX-512 hosts, the validator first tests every 512-byte window for ASCII.
 Clean windows are accepted immediately; a window containing a non-ASCII byte is
@@ -129,6 +141,11 @@ M5 with Go 1.27rc1, the ARM64 SIMD path measured about 10.3 GB/s on the
 repository's `mixed_64KB` benchmark. Its ASCII path has lower fixed call cost
 than the standard library but a higher steady-state per-byte cost on long,
 pure-ASCII buffers; the two can therefore cross over around a few KiB.
+
+On an Intel Core i3-8100T at 3.10 GHz with Go 1.27rc1, the AVX2 path measured
+about 8.2 GB/s on `mixed_64KB`, 8.4 GB/s on `dense_non_ascii`, and 41 GB/s on
+the 64 KiB sparse-emoji input. These are steady-state, allocation-free
+measurements with 512-byte window processing.
 
 These measurements are diagnostic snapshots, not an API guarantee. Re-run
 benchmarks with `-benchmem` after changing either the algorithm or the Go

@@ -113,7 +113,12 @@ func stateForScalarTail(chunk archsimd.Uint8x16) (utf8State, bool) {
 	b13 := chunk.GetElem(13)
 	b14 := chunk.GetElem(14)
 	b15 := chunk.GetElem(15)
+	return stateForScalarTailBytes(b13, b14, b15)
+}
 
+// stateForScalarTailBytes reconstructs an incomplete sequence that can begin
+// in the final three bytes of an already-valid SIMD block.
+func stateForScalarTailBytes(b13, b14, b15 byte) (utf8State, bool) {
 	class15 := classifyScalar(b15)
 	// The fused SIMD predicate validates a leading byte against its successor.
 	// A malformed lead in the final lane has no successor in this chunk, so it
