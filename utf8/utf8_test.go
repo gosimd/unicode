@@ -321,6 +321,39 @@ func TestValidBoundaryMatchesStandardLibrary(t *testing.T) {
 	}
 }
 
+func TestValidWideBoundaryMatchesStandardLibrary(t *testing.T) {
+	tests := []struct {
+		name    string
+		size    int
+		offset  int
+		payload []byte
+	}{
+		{name: "valid across 16-byte group", size: 1536, offset: 15, payload: []byte("😀")},
+		{name: "valid across 64-byte vector", size: 1536, offset: 63, payload: []byte("😀")},
+		{name: "valid across 512-byte window", size: 1536, offset: 511, payload: []byte("😀")},
+		{name: "valid dirty then ascii window", size: 1536, offset: 520, payload: []byte("世")},
+		{name: "stray continuation at window start", size: 1536, offset: 512, payload: []byte{0x80}},
+		{name: "overlong across window", size: 1536, offset: 511, payload: []byte{0xc0, 0xaf}},
+		{name: "surrogate across window", size: 1536, offset: 511, payload: []byte{0xed, 0xa0, 0x80}},
+		{name: "above max across window", size: 1536, offset: 511, payload: []byte{0xf4, 0x90, 0x80, 0x80}},
+		{name: "truncated at vector end", size: 1024, offset: 1022, payload: []byte{0xe2, 0x82}},
+		{name: "invalid lead at vector end", size: 1024, offset: 1023, payload: []byte{0xff}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data := bytes.Repeat([]byte{'a'}, tt.size)
+			copy(data[tt.offset:], tt.payload)
+			if got, want := simdutf8.Valid(data), stdutf8.Valid(data); got != want {
+				t.Fatalf("Valid at offset %d = %v, want %v", tt.offset, got, want)
+			}
+			if got, want := simdutf8.ValidString(string(data)), stdutf8.ValidString(string(data)); got != want {
+				t.Fatalf("ValidString at offset %d = %v, want %v", tt.offset, got, want)
+			}
+		})
+	}
+}
+
 func TestValidInvalidLeadingByteAtSIMDChunkEnd(t *testing.T) {
 	for _, prefixLen := range []int{15, 31, 47, 63, 79, 95} {
 		for _, lead := range []byte{0xc0, 0xc1, 0xf5, 0xff} {

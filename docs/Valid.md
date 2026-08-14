@@ -106,9 +106,12 @@ is used at full-chunk boundaries.
 
 On AVX-512 hosts, the validator first tests every 512-byte window for ASCII.
 Clean windows are accepted immediately; a window containing a non-ASCII byte is
-then checked as eight native 64-byte AVX-512 vectors. This lets a later ASCII
-region return to the cheap path after a rare emoji, while a continuation that
-crosses a window boundary is still checked by the full predicate.
+then checked as eight native 64-byte AVX-512 vectors. The wide predicate uses
+the same three-nibble lookup and saturating-subtraction model as ARM64, with a
+single accumulated error reduction per 512-byte window. A 64-bit permutation
+prepares the predecessor of each 128-bit shuffle group so sequences crossing
+either a group or vector boundary remain validatable. This lets a later ASCII
+region return to the cheap path after a rare emoji.
 
 ## Performance notes
 

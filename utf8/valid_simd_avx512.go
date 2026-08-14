@@ -12,13 +12,30 @@ const (
 	avx512VectorSize = 64
 )
 
+var (
+	avx512PreviousGroupsIndices = [8]uint64{6, 7, 8, 9, 10, 11, 12, 13}
+
+	avx512SpecialPrevHighTable    = repeatAVX512NibbleTable(utf8SpecialPrevHighTable)
+	avx512SpecialPrevLowTable     = repeatAVX512NibbleTable(utf8SpecialPrevLowTable)
+	avx512SpecialCurrentHighTable = repeatAVX512NibbleTable(utf8SpecialCurrentHighTable)
+)
+
+func repeatAVX512NibbleTable(table [16]uint8) (wide [64]uint8) {
+	copy(wide[0:16], table[:])
+	copy(wide[16:32], table[:])
+	copy(wide[32:48], table[:])
+	copy(wide[48:64], table[:])
+	return wide
+}
+
 func validAVX512(p []byte) bool {
 	return validAVX512Native(p)
 }
 
 // validAVX512Native first accepts independent 512-byte ASCII blocks. A block
-// containing non-ASCII bytes is validated in eight 64-byte AVX-512 vectors;
-// scalar mask shifts preserve UTF-8 dependencies across their boundaries.
+// containing non-ASCII bytes is validated in eight 64-byte AVX-512 vectors.
+// Nibble lookups and saturating subtraction preserve UTF-8 dependencies
+// across their boundaries without reducing masks to scalar registers.
 func validAVX512Native(p []byte) bool {
 	if len(p) < avx512WindowSize {
 		return stdutf8.Valid(p)
@@ -57,13 +74,13 @@ func validAVX512Native(p []byte) bool {
 }
 
 type avx512UTF8State struct {
-	need1, need2, lead4 uint64
-	e0, ed, f0, f4      uint64
-	tail                [3]byte
+	previous   archsimd.Uint8x64
+	tail       [3]byte
+	incomplete bool
 }
 
 func (state avx512UTF8State) pending() bool {
-	return ((state.need1>>63)|(state.need2>>62)|(state.lead4>>61))&0x7 != 0
+	return state.incomplete
 }
 
 // validateAVX512DirtyBlock validates one 512-byte block. Keeping the wide
@@ -71,60 +88,58 @@ func (state avx512UTF8State) pending() bool {
 //
 //go:noinline
 func validateAVX512DirtyBlock(p []byte, state *avx512UTF8State) bool {
-	c80 := archsimd.BroadcastUint8x64(0x80)
-	c90 := archsimd.BroadcastUint8x64(0x90)
-	c9f := archsimd.BroadcastUint8x64(0x9f)
-	a0 := archsimd.BroadcastUint8x64(0xa0)
-	c0 := archsimd.BroadcastUint8x64(0xc0)
-	c2 := archsimd.BroadcastUint8x64(0xc2)
-	c8f := archsimd.BroadcastUint8x64(0x8f)
-	e0 := archsimd.BroadcastUint8x64(0xe0)
-	ed := archsimd.BroadcastUint8x64(0xed)
-	f0 := archsimd.BroadcastUint8x64(0xf0)
-	f4 := archsimd.BroadcastUint8x64(0xf4)
+	lowNibbleMask := archsimd.BroadcastUint8x64(0x0f)
+	continuationBit := archsimd.BroadcastUint8x64(0x80)
+	needSecondContinuation := archsimd.BroadcastUint8x64(0x60)
+	needThirdContinuation := archsimd.BroadcastUint8x64(0x70)
+	zero := archsimd.Uint8x64{}
 
-	prevNeed1, prevNeed2, prevLead4 := state.need1, state.need2, state.lead4
-	prevE0, prevED, prevF0, prevF4 := state.e0, state.ed, state.f0, state.f4
+	previousGroupsIndices := archsimd.LoadUint64x8Array(&avx512PreviousGroupsIndices)
+	prevHighTable := archsimd.LoadUint8x64Array(&avx512SpecialPrevHighTable)
+	prevLowTable := archsimd.LoadUint8x64Array(&avx512SpecialPrevLowTable)
+	currentHighTable := archsimd.LoadUint8x64Array(&avx512SpecialCurrentHighTable)
+
+	previous := state.previous
+	errors := zero
 	for range avx512WindowSize / avx512VectorSize {
 		block := archsimd.LoadUint8x64(p)
 
-		continuation := block.GreaterEqual(c80).ToBits() & block.Less(c0).ToBits()
-		lead2 := block.GreaterEqual(c2).ToBits() & block.Less(e0).ToBits()
-		lead3 := block.GreaterEqual(e0).ToBits() & block.Less(f0).ToBits()
-		lead4 := block.GreaterEqual(f0).ToBits() & block.LessEqual(f4).ToBits()
-		need1 := lead2 | lead3 | lead4
-		need2 := lead3 | lead4
+		// VPALIGNR operates independently in each 128-bit group. Arrange the
+		// predecessor groups so every group receives the bytes immediately
+		// preceding it, including the boundary from the previous ZMM vector.
+		previousGroups := previous.AsUint64x8().ConcatPermute(
+			block.AsUint64x8(), previousGroupsIndices,
+		).AsUint8x64()
+		prev1 := block.ConcatShiftBytesRightGrouped(previousGroups, 15)
+		prev2 := block.ConcatShiftBytesRightGrouped(previousGroups, 14)
+		prev3 := block.ConcatShiftBytesRightGrouped(previousGroups, 13)
 
-		carry := ((prevNeed1 >> 63) & 1) |
-			((prevNeed2 >> 62) & 1) |
-			((prevLead4 >> 61) & 1)
-		carry |= (((prevNeed2 >> 63) & 1) | ((prevLead4 >> 62) & 1)) << 1
-		carry |= ((prevLead4 >> 63) & 1) << 2
-		expected := (need1 << 1) | (need2 << 2) | (lead4 << 3) | carry
+		prevHigh := prev1.AsUint16x32().ShiftAllRight(4).
+			AsUint8x64().And(lowNibbleMask).AsInt8x64()
+		prevLow := prev1.And(lowNibbleMask).AsInt8x64()
+		currentHigh := block.AsUint16x32().ShiftAllRight(4).
+			AsUint8x64().And(lowNibbleMask).AsInt8x64()
+		specialCases := prevHighTable.PermuteOrZeroGrouped(prevHigh).
+			And(prevLowTable.PermuteOrZeroGrouped(prevLow)).
+			And(currentHighTable.PermuteOrZeroGrouped(currentHigh))
 
-		errors := continuation ^ expected
-		errors |= block.GreaterEqual(c0).ToBits() & block.Less(c2).ToBits()
-		errors |= block.Greater(f4).ToBits()
+		mustContinue := prev2.SubSaturated(needSecondContinuation).Or(
+			prev3.SubSaturated(needThirdContinuation),
+		)
+		errors = errors.Or(mustContinue.And(continuationBit).Xor(specialCases))
 
-		e0Mask := block.Equal(e0).ToBits()
-		edMask := block.Equal(ed).ToBits()
-		f0Mask := block.Equal(f0).ToBits()
-		f4Mask := block.Equal(f4).ToBits()
-		errors |= ((e0Mask << 1) | ((prevE0 >> 63) & 1)) & block.Less(a0).ToBits()
-		errors |= ((edMask << 1) | ((prevED >> 63) & 1)) & block.Greater(c9f).ToBits()
-		errors |= ((f0Mask << 1) | ((prevF0 >> 63) & 1)) & block.Less(c90).ToBits()
-		errors |= ((f4Mask << 1) | ((prevF4 >> 63) & 1)) & block.Greater(c8f).ToBits()
-		if errors != 0 {
-			return false
-		}
-
-		prevNeed1, prevNeed2, prevLead4 = need1, need2, lead4
-		prevE0, prevED, prevF0, prevF4 = e0Mask, edMask, f0Mask, f4Mask
+		previous = block
 		state.tail[0], state.tail[1], state.tail[2] = p[61], p[62], p[63]
 		p = p[avx512VectorSize:]
 	}
-	state.need1, state.need2, state.lead4 = prevNeed1, prevNeed2, prevLead4
-	state.e0, state.ed, state.f0, state.f4 = prevE0, prevED, prevF0, prevF4
+	if errors.Equal(zero).ToBits() != ^uint64(0) {
+		return false
+	}
+
+	state.previous = previous
+	state.incomplete = state.tail[0] > 0xef ||
+		state.tail[1] > 0xdf ||
+		state.tail[2] > 0xbf
 	return true
 }
 
