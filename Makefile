@@ -1,4 +1,6 @@
-GO ?= go
+# Prefer the Go selected by PATH; let a fresh server checkout fall back to the
+# project toolchain location used on the benchmark hosts.
+GO ?= $(shell command -v go 2>/dev/null || printf '%s/.local/go1.27rc1/bin/go' "$$HOME")
 export GOPATH ?= $(CURDIR)/.gopath
 export GOBIN ?= $(GOPATH)/bin
 export GOCACHE ?= $(CURDIR)/.cache/go-build
