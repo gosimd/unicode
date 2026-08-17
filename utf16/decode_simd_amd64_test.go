@@ -14,11 +14,25 @@ func TestDecodeAVX2MatchesStandardLibrary(t *testing.T) {
 		t.Skip("AVX2 is not available")
 	}
 
+	densePairs := make([]uint16, 96)
+	for i := 0; i < len(densePairs); i += 2 {
+		pair := i / 2
+		densePairs[i] = surrogateHighStart + uint16(pair%0x400)
+		densePairs[i+1] = surrogateLowStart + uint16((pair*37)%0x400)
+	}
+	densePairs[len(densePairs)-2] = surrogateLowStart - 1
+	densePairs[len(densePairs)-1] = surrogateEnd - 1
+	interruptedPairs := append([]uint16(nil), densePairs[:32]...)
+	interruptedPairs = append(interruptedPairs, 'A', 0xD800, 'B', 0xDC00)
+	interruptedPairs = append(interruptedPairs, densePairs[32:]...)
+
 	for _, input := range [][]uint16{
 		nil,
 		{'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'},
 		{'A', 0xD800, 0xDC00, 'B', 0xD800, 'C', 0xDC00, 'D', 'E'},
 		{0xD800, 0xDC00, 'A', 'B', 'C', 'D', 'E', 0xD800, 0xDC00},
+		densePairs,
+		interruptedPairs,
 	} {
 		got := decodeAVX2(input, make([]rune, len(input)))
 		if want := stdutf16.Decode(input); !reflect.DeepEqual(got, want) {

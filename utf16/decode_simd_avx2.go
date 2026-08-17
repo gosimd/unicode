@@ -7,6 +7,19 @@ import (
 	"unsafe"
 )
 
+var (
+	decodeSurrogatePairBaseAVX2 = [16]uint16{
+		surrogateHighStart, surrogateLowStart, surrogateHighStart, surrogateLowStart,
+		surrogateHighStart, surrogateLowStart, surrogateHighStart, surrogateLowStart,
+		surrogateHighStart, surrogateLowStart, surrogateHighStart, surrogateLowStart,
+		surrogateHighStart, surrogateLowStart, surrogateHighStart, surrogateLowStart,
+	}
+	decodeSurrogatePairWeightsAVX2 = [16]int16{
+		1024, 1, 1024, 1, 1024, 1, 1024, 1,
+		1024, 1, 1024, 1, 1024, 1, 1024, 1,
+	}
+)
+
 // decodeAVX2 widens clean BMP chunks with AVX2.
 func decodeAVX2(s []uint16, out []rune) []rune {
 	if len(out) < len(s) {
@@ -58,7 +71,38 @@ func decodeAVX2(s []uint16, out []rune) []rune {
 		if end > len(s) {
 			end = len(s)
 		}
+		scalarN := n
 		i, n = decodeScalar(s, out, i, n, end)
+		if n-scalarN == decodeSIMDChunkSize/2 && len(s)-i >= 4*decodeSIMDChunkSize {
+			i, n = decodeSurrogatePairRunAVX2(inputBase, outputBase, len(s), i, n)
+		}
 	}
 	return out[:n]
+}
+
+//go:noinline
+func decodeSurrogatePairRunAVX2(inputBase, outputBase unsafe.Pointer, inputLen, i, n int) (int, int) {
+	base := archsimd.LoadUint16x16Array(&decodeSurrogatePairBaseAVX2)
+	maximum := archsimd.BroadcastUint16x16(surrogateLowStart - surrogateHighStart - 1)
+	weights := archsimd.LoadInt16x16Array(&decodeSurrogatePairWeightsAVX2)
+	offset := archsimd.BroadcastInt32x8(surrogateOffset)
+
+	for inputLen-i >= 4*decodeSIMDChunkSize {
+		chunk0 := archsimd.LoadUint16x16Array((*[16]uint16)(unsafe.Add(inputBase, uintptr(i)*2)))
+		chunk1 := archsimd.LoadUint16x16Array((*[16]uint16)(unsafe.Add(inputBase, uintptr(i+16)*2)))
+		diff0 := chunk0.Sub(base)
+		diff1 := chunk1.Sub(base)
+		bad := diff0.SubSaturated(maximum).Or(diff1.SubSaturated(maximum))
+		if !bad.IsZero() {
+			break
+		}
+
+		diff0.AsInt16x16().DotProductPairs(weights).Add(offset).
+			StoreArray((*[8]int32)(unsafe.Add(outputBase, uintptr(n)*4)))
+		diff1.AsInt16x16().DotProductPairs(weights).Add(offset).
+			StoreArray((*[8]int32)(unsafe.Add(outputBase, uintptr(n+8)*4)))
+		i += 4 * decodeSIMDChunkSize
+		n += 2 * decodeSIMDChunkSize
+	}
+	return i, n
 }
