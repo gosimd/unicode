@@ -5,8 +5,8 @@ primarily algorithms that process text and text-adjacent encodings.
 `github.com/gosimd/unicode` is the UTF-encoding member of that collection: it
 provides correct, high-performance SIMD implementations of UTF algorithms.
 
-The current focus is UTF-8 validation, counting, and encoding, together with
-SIMD UTF-16 encoding and decoding.
+The current focus is UTF-8 validation, counting, encoding, and decoding,
+together with SIMD UTF-16 encoding and decoding.
 Other `gosimd` libraries will cover domains such as JSON and general encoding.
 
 ## Current UTF-8 implementation
@@ -43,7 +43,9 @@ and uses a SIMD one-pass validator/counter for valid UTF-8 when supported.
 On arm64, `Encode` uses NEON to plan the exact result length, pack ASCII blocks,
 and compact variable-width UTF-8 encodings four runes at a time. See
 [docs/API.md](docs/API.md) for the full current API and
-[docs/Valid.md](docs/Valid.md) for the SIMD algorithm.
+[docs/Valid.md](docs/Valid.md) and [docs/Decode.md](docs/Decode.md) for the SIMD
+algorithms. `Decode` validates and counts first, allocates the exact result,
+widens 64-byte ASCII blocks, and uses a NEON table decoder for non-ASCII text.
 
 ## UTF-16 compatibility package
 
@@ -65,16 +67,17 @@ The SIMD implementation package is built with Go's `simd` experiment on
 `arm64` and `amd64`.
 
 - `arm64` uses NEON for the table-driven fused UTF-8 validator, rune counting,
-  and whole-buffer UTF-8 encoding.
+  and whole-buffer UTF-8 encoding and decoding.
 - `amd64` requires AVX2 at runtime. `Valid` and `RuneCount` use native 256-bit
   validators for dirty 512-byte windows; machines without AVX2 use the standard
   library fallback.
 - Other architectures, and builds without `GOEXPERIMENT=simd`, use the pure Go
   fallback.
 
-The algorithm, boundary handling, and platform-specific choices are documented
-in [docs/Valid.md](docs/Valid.md). The repository layout and design boundaries
-are in [ARCHITECTURE.md](ARCHITECTURE.md).
+The algorithms, boundary handling, and platform-specific choices are documented
+in [docs/Valid.md](docs/Valid.md) and [docs/Decode.md](docs/Decode.md). The
+repository layout and design boundaries are in
+[ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Development
 

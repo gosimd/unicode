@@ -37,10 +37,13 @@ length planning, 16-rune ASCII packing, and table-driven compaction of four
 variable-width encodings. Invalid runes, including surrogate values, are
 replaced by `RuneError` exactly as in the language conversion. Unsupported
 builds use `string(runes)`. `Decode(string)` remains equivalent to
-`[]rune(string)` and currently uses that language conversion directly. Every
-remaining API delegates directly to the standard library because its input is
-at most one rune or a few bytes and does not benefit from whole-buffer SIMD
-processing.
+`[]rune(string)`. On arm64 with `GOEXPERIMENT=simd`, it validates and counts in
+one NEON pass, allocates the exact rune slice, widens ASCII blocks, and uses a
+table-driven masked decoder for valid non-ASCII input. Malformed input falls
+back to the language conversion so replacement-rune recovery remains exact.
+Unsupported builds use `[]rune(string)` directly. Every remaining API delegates
+to the standard library because its input is at most one rune or a few bytes
+and does not benefit from whole-buffer SIMD processing.
 
 The compatibility surface is reviewed when the Go baseline changes. New
 exports in `unicode/utf8` are intentionally added here with matching tests;
@@ -80,4 +83,4 @@ import "github.com/gosimd/unicode"
 The root package is a smaller convenience facade exposing `Valid`,
 `ValidString`, and `RuneCount`. It delegates to `github.com/gosimd/unicode/utf8`.
 
-For the `Valid` implementation details, see [Valid.md](Valid.md).
+For implementation details, see [Valid.md](Valid.md) and [Decode.md](Decode.md).

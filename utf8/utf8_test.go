@@ -3,6 +3,7 @@ package utf8_test
 import (
 	"bytes"
 	"encoding/binary"
+	"strings"
 	"testing"
 	stdutf8 "unicode/utf8"
 
@@ -60,6 +61,63 @@ func TestDecodeMatchesLanguageConversion(t *testing.T) {
 				t.Fatalf("Decode(%q) = %U, want %U", tt.data, got, want)
 			}
 		})
+	}
+}
+
+func TestDecodeAllFourRuneLengthCombinations(t *testing.T) {
+	representatives := [...]rune{'A', '¢', '世', '😀'}
+	for selector := 0; selector < 256; selector++ {
+		inputRunes := make([]rune, 64)
+		for i := range inputRunes {
+			lane := i & 3
+			inputRunes[i] = representatives[(selector>>(2*lane))&3]
+		}
+		input := string(inputRunes)
+		if got, want := simdutf8.Decode(input), []rune(input); !equalRunes(got, want) {
+			t.Fatalf("selector %#02x: Decode = %U, want %U", selector, got, want)
+		}
+	}
+}
+
+func TestDecodeSIMDBoundarySweep(t *testing.T) {
+	patterns := []string{
+		"A",
+		"¢",
+		"世",
+		"😀",
+		"A¢世😀",
+		"hello, 世界 😀 ",
+	}
+	for _, pattern := range patterns {
+		for prefix := 0; prefix <= 80; prefix++ {
+			input := strings.Repeat("a", prefix) + strings.Repeat(pattern, 32) + "tail"
+			if got, want := simdutf8.Decode(input), []rune(input); !equalRunes(got, want) {
+				t.Fatalf("pattern %q, prefix %d: Decode = %U, want %U", pattern, prefix, got, want)
+			}
+		}
+	}
+}
+
+func TestDecodeInvalidOffsetSweep(t *testing.T) {
+	invalid := [][]byte{
+		{0x80},
+		{0xc0, 0xaf},
+		{0xe2, 0x82},
+		{0xed, 0xa0, 0x80},
+		{0xf4, 0x90, 0x80, 0x80},
+		{0xff},
+	}
+	for _, sequence := range invalid {
+		for offset := 0; offset <= 80; offset++ {
+			data := make([]byte, 0, 160+len(sequence))
+			data = append(data, bytes.Repeat([]byte{'a'}, offset)...)
+			data = append(data, sequence...)
+			data = append(data, bytes.Repeat([]byte{'b'}, 160-offset)...)
+			input := string(data)
+			if got, want := simdutf8.Decode(input), []rune(input); !equalRunes(got, want) {
+				t.Fatalf("sequence % x, offset %d: Decode = %U, want %U", sequence, offset, got, want)
+			}
+		}
 	}
 }
 
@@ -602,6 +660,18 @@ func FuzzEncodeMatchesLanguageConversion(f *testing.F) {
 		}
 		if got, want := simdutf8.Encode(runes), string(runes); got != want {
 			t.Fatalf("Encode(%U) = % x, want % x", runes, got, want)
+		}
+	})
+}
+
+func FuzzDecodeMatchesLanguageConversion(f *testing.F) {
+	f.Add("")
+	f.Add("ASCII")
+	f.Add("hello, 世界 😀")
+	f.Add(string([]byte{0x80, 0xc0, 0xaf, 0xe2, 0x82, 0xf4, 0x90, 0x80, 0x80}))
+	f.Fuzz(func(t *testing.T, input string) {
+		if got, want := simdutf8.Decode(input), []rune(input); !equalRunes(got, want) {
+			t.Fatalf("Decode(% x) = %U, want %U", input, got, want)
 		}
 	})
 }

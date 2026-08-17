@@ -5,7 +5,8 @@
 The UTF-8 package, `github.com/gosimd/unicode/utf8`, is the stable user-facing
 surface for UTF-8 operations. It mirrors `unicode/utf8` without exposing vector
 types, masks, CPU checks, or architecture-specific behaviour. Its `Valid`,
-`RuneCount`, and `Encode` methods select SIMD paths when they are available.
+`RuneCount`, `Encode`, and `Decode` methods select SIMD paths when they are
+available.
 
 The root package, `github.com/gosimd/unicode`, remains a compact convenience
 facade for `Valid`, `ValidString`, and `RuneCount`. It delegates to the public
@@ -59,7 +60,8 @@ allocate.
 | `ascii_amd64.go` | amd64 ASCII detector. |
 | `lookup_*`, `zero_*` | Architecture-specific table lookup and zero reduction helpers. |
 | `encode_simd_arm64.go` | NEON UTF-8 length planning, ASCII packing, and variable-width encoding. |
-| `valid_fallback.go`, `rune_count_fallback.go`, `encode_fallback.go` | Non-SIMD standard-library fallbacks. |
+| `decode_simd_arm64.go` | NEON UTF-8 ASCII widening and table-driven masked decoding. |
+| `valid_fallback.go`, `rune_count_fallback.go`, `encode_fallback.go`, `decode_fallback.go` | Non-SIMD standard-library fallbacks. |
 
 The ARM64 loop and the amd64 baseline work on four 16-byte vectors (64 bytes).
 The primary AVX2 `Valid` path tests 512-byte windows for ASCII and validates
@@ -91,6 +93,24 @@ compacts the selected bytes into a contiguous result. Four-rune groups that mix
 ASCII and wider encodings use the scalar encoder because constructing all four
 SIMD candidates costs more for that shape. Builds without arm64 SIMD use the
 language conversion directly.
+
+## SIMD UTF-8 decoding
+
+`utf8.Decode` preserves the language conversion contract `[]rune(string)`.
+The arm64 SIMD implementation first reuses the fused validator/counter. Invalid
+input immediately delegates to the language conversion, preserving its exact
+one-byte `RuneError` recovery semantics. Valid input is allocated once at the
+exact rune count.
+
+The decoder handles 64-byte ASCII windows by widening bytes to `uint16` and
+then `uint32` before four-lane stores. For non-ASCII windows it converts the
+continuation-byte predicate into a scalar end-of-sequence mask. The low twelve
+bits address a 4096-entry dispatch table, which records how many source bytes
+and output runes are covered and selects one of 256 NEON `TBL` shuffle rows.
+The shuffle right-aligns up to four UTF-8 sequences in `uint32` lanes; masks,
+shifts, and a three-byte correction then assemble Unicode scalar values. A
+dense two-byte mask has its own six-rune widening path. The final short tail is
+decoded scalar. See [docs/Decode.md](docs/Decode.md) for the detailed dataflow.
 
 ## SIMD UTF-16 decoding
 

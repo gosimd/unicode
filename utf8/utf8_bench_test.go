@@ -155,24 +155,44 @@ func BenchmarkEncode(b *testing.B) {
 	}
 }
 
-// BenchmarkDecode measures the full language-conversion API and an equivalent
-// caller-buffer core loop. The core variant excludes result allocation.
+// BenchmarkDecode keeps the public APIs separate from caller-buffer core loops.
+// The core variants exclude validation, rune counting, and result allocation.
 func BenchmarkDecode(b *testing.B) {
-	for _, input := range utf8BenchStringInputs() {
+	for _, input := range utf8DecodeBenchStringInputs() {
 		b.Run(input.name, func(b *testing.B) {
-			b.Run("full", func(b *testing.B) {
+			b.Run("stdlib_full", func(b *testing.B) {
+				b.ReportAllocs()
+				b.SetBytes(int64(len(input.data)))
+				for b.Loop() {
+					benchRuneSliceSink = []rune(input.data)
+				}
+			})
+			b.Run("simd_full", func(b *testing.B) {
 				b.ReportAllocs()
 				b.SetBytes(int64(len(input.data)))
 				for b.Loop() {
 					benchRuneSliceSink = simdutf8.Decode(input.data)
 				}
 			})
-			b.Run("core", func(b *testing.B) {
+			b.Run("stdlib_core", func(b *testing.B) {
 				out := make([]rune, 0, simdutf8.RuneCountInString(input.data))
 				b.ReportAllocs()
 				b.SetBytes(int64(len(input.data)))
 				for b.Loop() {
 					benchRuneSliceSink = decodeCore(input.data, out[:0])
+				}
+			})
+
+			plan, decodedRunes, simdAvailable := simdutf8.NewDecodeSIMDBenchmarkPlan(input.data)
+			b.Run("simd_core", func(b *testing.B) {
+				if !simdAvailable {
+					b.Skip("ARM64 SIMD decoder is unavailable for this input")
+				}
+				out := make([]rune, decodedRunes)
+				b.ReportAllocs()
+				b.SetBytes(int64(len(input.data)))
+				for b.Loop() {
+					benchRuneSliceSink = simdutf8.DecodeSIMDCoreForBenchmark(input.data, out, plan)
 				}
 			})
 		})
@@ -211,6 +231,18 @@ func TestCoreConversionsMatchPublicAPI(t *testing.T) {
 			decoded := decodeCore(input.data, make([]rune, 0, simdutf8.RuneCountInString(input.data)))
 			if want := simdutf8.Decode(input.data); !slices.Equal(decoded, want) {
 				t.Fatalf("decodeCore = %U, want %U", decoded, want)
+			}
+
+			plan, decodedRunes, simdAvailable := simdutf8.NewDecodeSIMDBenchmarkPlan(input.data)
+			if simdAvailable {
+				simdDecoded := simdutf8.DecodeSIMDCoreForBenchmark(
+					input.data,
+					make([]rune, decodedRunes),
+					plan,
+				)
+				if want := simdutf8.Decode(input.data); !slices.Equal(simdDecoded, want) {
+					t.Fatalf("DecodeSIMDCoreForBenchmark = %U, want %U", simdDecoded, want)
+				}
 			}
 		})
 	}
@@ -264,6 +296,28 @@ func utf8BenchStringInputs() []struct {
 		})
 	}
 	return stringInputs
+}
+
+func utf8DecodeBenchStringInputs() []struct {
+	name string
+	data string
+} {
+	return []struct {
+		name string
+		data string
+	}{
+		{name: "empty", data: ""},
+		{name: "ascii_1KB", data: strings.Repeat("a", 1024)},
+		{name: "ascii_64KB", data: strings.Repeat("a", 64*1024)},
+		{name: "latin_64KB", data: strings.Repeat("¢", 32*1024)},
+		{name: "cyrillic_64KB", data: strings.Repeat("Ж", 32*1024)},
+		{name: "cjk_64KB", data: strings.Repeat("世", (64*1024)/3)},
+		{name: "emoji_64KB", data: strings.Repeat("😀", 16*1024)},
+		{name: "mixed_1KB", data: strings.Repeat("hello, 世界 ", 80)},
+		{name: "mixed_64KB", data: strings.Repeat("hello, 世界 😀 ", 4096)},
+		{name: "invalid_early", data: string(append([]byte{0x80}, bytes.Repeat([]byte{'a'}, 64*1024)...))},
+		{name: "invalid_late", data: string(append(bytes.Repeat([]byte{'a'}, 64*1024), 0x80))},
+	}
 }
 
 // BenchmarkReport supplies the stable, publication-oriented UTF-8 matrix used

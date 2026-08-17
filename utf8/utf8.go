@@ -18,12 +18,6 @@ func AppendRune(p []byte, r rune) []byte {
 	return stdutf8.AppendRune(p, r)
 }
 
-// Decode returns the runes in s. Invalid UTF-8 encodings are replaced by
-// RuneError, as in the language conversion []rune(s).
-func Decode(s string) []rune {
-	return []rune(s)
-}
-
 // DecodeLastRune unpacks the last UTF-8 encoding in p and returns the rune and
 // its width in bytes.
 func DecodeLastRune(p []byte) (r rune, size int) {
