@@ -17,7 +17,7 @@ coverage.*
 *.coverprofile
 profile.cov
 
-# Generated UTF-8 benchmark data and HTML comparison report
+# Legacy generated UTF-8 benchmark data and HTML comparison report
 bench/valid.txt
 bench/valid.html
 

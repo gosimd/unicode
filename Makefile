@@ -1,20 +1,21 @@
-GO ?= ../.tools/go1.27rc1/bin/go
-export GOPATH ?= /Users/ax2/gosimd/.gopath
-export GOBIN ?= /Users/ax2/gosimd/.gopath/bin
-export GOCACHE ?= /Users/ax2/gosimd/.cache/go-build
-PROFILE_DIR ?= ../.profiles
+# Prefer the Go selected by PATH; let a fresh server checkout fall back to the
+# project toolchain location used on the benchmark hosts.
+GO ?= $(shell command -v go 2>/dev/null || printf '%s/.local/go1.27rc1/bin/go' "$$HOME")
+export GOPATH ?= $(CURDIR)/.gopath
+export GOBIN ?= $(GOPATH)/bin
+export GOCACHE ?= $(CURDIR)/.cache/go-build
+PROFILE_DIR ?= .profiles
 PKG ?= ./...
 BENCH ?= .
 BENCH_COUNT ?= 1
-BENCH_TIME ?= 1s
-BENCH_HARDWARE ?= unspecified
 UTF8_PKG ?= ./utf8
 UTF16_PKG ?= ./utf16
 SIMD_GOEXPERIMENT ?= simd
-VALID_BENCH_OUTPUT ?= bench/valid.txt
-VALID_BENCH_REPORT ?= bench/valid.html
+REPORT_COUNT ?= 5
+REPORT_TIME ?= 1s
+REPORT_OUTPUT ?=
 
-.PHONY: build test test-simd test-race bench bench-utf8 bench-utf8-simd bench-utf8-report profile profile-utf8 profile-utf8-simd profile-cpu profile-mem profile-utf8-cpu profile-utf8-mem vet fmt clean-profiles
+.PHONY: build test test-simd test-race bench bench-utf8 bench-utf8-simd bench-utf16-simd bench-report profile profile-utf8 profile-utf8-simd profile-cpu profile-mem profile-utf8-cpu profile-utf8-mem vet fmt clean-profiles
 
 build:
 	$(GO) build $(PKG)
@@ -40,10 +41,8 @@ bench-utf8-simd:
 bench-utf16-simd:
 	GOEXPERIMENT=$(SIMD_GOEXPERIMENT) $(GO) test -run='^$$' -bench='$(BENCH)' -benchmem -count=$(BENCH_COUNT) $(UTF16_PKG)
 
-bench-utf8-report:
-	mkdir -p $(dir $(VALID_BENCH_OUTPUT))
-	GOEXPERIMENT=$(SIMD_GOEXPERIMENT) $(GO) test -run='^$$' -bench='^BenchmarkValidSIMDUTF8Table$$' -benchmem -benchtime=$(BENCH_TIME) -count=$(BENCH_COUNT) $(UTF8_PKG) > $(VALID_BENCH_OUTPUT)
-	$(GO) run ./cmd/benchreport -input $(VALID_BENCH_OUTPUT) -output $(VALID_BENCH_REPORT) -hardware "$(BENCH_HARDWARE)" -benchtime $(BENCH_TIME) -count $(BENCH_COUNT)
+bench-report:
+	GOEXPERIMENT=$(SIMD_GOEXPERIMENT) $(GO) run ./cmd/benchreport -go $(GO) -benchtime $(REPORT_TIME) -count $(REPORT_COUNT) $(if $(REPORT_OUTPUT),-output $(REPORT_OUTPUT),)
 
 profile:
 	mkdir -p $(PROFILE_DIR)
