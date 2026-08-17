@@ -1,6 +1,9 @@
-# Prefer the Go selected by PATH; let a fresh server checkout fall back to the
-# project toolchain location used on the benchmark hosts.
-GO ?= $(shell command -v go 2>/dev/null || printf '%s/.local/go1.27rc1/bin/go' "$$HOME")
+# GOSIMD_GO is the machine-local Go 1.27rc3 executable. Set GO explicitly to
+# override it for a one-off build.
+GO ?= $(GOSIMD_GO)
+ifeq ($(strip $(GO)),)
+$(error set GOSIMD_GO to the Go 1.27rc3 executable, or pass GO=/path/to/go)
+endif
 export GOPATH ?= $(CURDIR)/.gopath
 export GOBIN ?= $(GOPATH)/bin
 export GOCACHE ?= $(CURDIR)/.cache/go-build

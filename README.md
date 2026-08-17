@@ -75,8 +75,15 @@ are in [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Development
 
-This repository is configured for Go 1.27rc1 via the local toolchain at
-`../.tools/go1.27rc1`.
+This repository selects Go 1.27rc3 through the machine-local `GOSIMD_GO`
+environment variable. Set it once to the `go` executable for the current
+machine, add its directory to `PATH`, then restart VS Code so its Go extension
+inherits the same environment:
+
+```sh
+export GOSIMD_GO=/machine-specific/path/to/go1.27rc3/bin/go
+export PATH="$(dirname "$GOSIMD_GO"):$PATH"
+```
 
 ```sh
 make build
@@ -106,8 +113,8 @@ guidance.
 For a direct SIMD test run:
 
 ```sh
-GOEXPERIMENT=simd ../.tools/go1.27rc1/bin/go test ./...
-GOEXPERIMENT=simd ../.tools/go1.27rc1/bin/go test -bench=. -benchmem ./...
+GOEXPERIMENT=simd "$GOSIMD_GO" test ./...
+GOEXPERIMENT=simd "$GOSIMD_GO" test -bench=. -benchmem ./...
 ```
 
 In VS Code, install the recommended Go extension and use the provided tasks:

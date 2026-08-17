@@ -1,24 +1,4 @@
 {
-  "go.goroot": "/Users/ax2/gosimd/.tools/go1.27rc1",
-  "go.gopath": "/Users/ax2/gosimd/.gopath",
-  "go.toolsGopath": "/Users/ax2/gosimd/.gopath",
-  "go.alternateTools": {
-    "go": "/Users/ax2/gosimd/.tools/go1.27rc1/bin/go",
-    "gofmt": "/Users/ax2/gosimd/.tools/go1.27rc1/bin/gofmt",
-    "gopls": "/Users/ax2/gosimd/.gopath/bin/gopls",
-    "dlv": "/Users/ax2/gosimd/.gopath/bin/dlv"
-  },
-  "go.toolsEnvVars": {
-    "GOPATH": "/Users/ax2/gosimd/.gopath",
-    "GOBIN": "/Users/ax2/gosimd/.gopath/bin",
-    "GOCACHE": "/Users/ax2/gosimd/.cache/go-build"
-  },
-  "terminal.integrated.env.osx": {
-    "PATH": "/Users/ax2/gosimd/.tools/go1.27rc1/bin:/Users/ax2/gosimd/.gopath/bin:${env:PATH}",
-    "GOPATH": "/Users/ax2/gosimd/.gopath",
-    "GOBIN": "/Users/ax2/gosimd/.gopath/bin",
-    "GOCACHE": "/Users/ax2/gosimd/.cache/go-build"
-  },
   "go.useLanguageServer": true,
   "go.testFlags": ["-v"],
   "go.testTimeout": "60s",
