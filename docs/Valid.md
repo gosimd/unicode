@@ -74,11 +74,12 @@ is present. This keeps the common full-block path entirely vector-based.
 `RuneCount` uses the same validation predicates and boundary carry as `Valid`,
 but fuses counting into that traversal. For a well-formed UTF-8 buffer, each
 continuation byte belongs to a preceding rune, so the result is
-`len(p) - continuationCount`. NEON and AVX2 reduce continuation masks in their
-16-byte loops. On AVX-512, the lookup validator already produces a vector with
-`0x80` at every required continuation position. `VPSADBW` accumulates those
-bytes into eight 64-bit lanes while validating each 64-byte vector; the lanes
-are reduced once after the full 512-byte windows have been processed.
+`len(p) - continuationCount`. NEON reduces continuation masks in its 16-byte
+loop. The AVX2 and AVX-512 lookup validators already produce current-byte
+flags whose `0x02` bit is set exactly for high nibbles `8` through `B`.
+`VPSADBW` accumulates that continuation-class bit into four AVX2 or eight
+AVX-512 64-bit lanes while validating each vector; the lanes are reduced once
+after the full 512-byte windows have been processed.
 
 Malformed input cannot use that identity: `unicode/utf8.RuneCount` treats each
 erroneous or short byte as a width-1 error rune. If the SIMD validator finds an
@@ -119,6 +120,12 @@ accumulated in a YMM register and reduced once per window with `VPTEST`. An
 explicit three-byte tail preserves state between windows and into the scalar
 remainder.
 
+`RuneCount` uses the same AVX2 lookup loop in a separate fused kernel. It adds
+the continuation-class flags with `VPSADBW` and `VPADDQ`, avoiding the
+128-bit baseline's per-vector mask extraction and scalar population counts.
+The error vector is still reduced only once per 512-byte window, and the
+counting instructions are not present in `Valid`'s kernel.
+
 On AVX-512 hosts, the validator first tests every 512-byte window for ASCII.
 Clean windows are accepted immediately; a window containing a non-ASCII byte is
 then checked as eight native 64-byte AVX-512 vectors. The wide predicate uses
@@ -129,7 +136,7 @@ either a group or vector boundary remain validatable. This lets a later ASCII
 region return to the cheap path after a rare emoji.
 
 `RuneCount` uses the same AVX-512 lookup loop. It accumulates the existing
-expected-continuation bytes with `VPSADBW` and `VPADDQ`, avoiding per-vector
+continuation-class flags with `VPSADBW` and `VPADDQ`, avoiding per-vector
 mask extraction and scalar population counts. Inputs shorter than one
 512-byte window retain the AVX2 path, and the final shorter tail is completed
 with the shared scalar UTF-8 state machine.

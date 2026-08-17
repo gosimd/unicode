@@ -59,9 +59,9 @@ The SIMD implementation package is built with Go's `simd` experiment on
 `arm64` and `amd64`.
 
 - `arm64` uses NEON and a table-driven, fused UTF-8 validator.
-- `amd64` requires AVX2 at runtime. `Valid` uses a native 256-bit validator for
-  dirty 512-byte windows; machines without AVX2 use the standard library
-  fallback.
+- `amd64` requires AVX2 at runtime. `Valid` and `RuneCount` use native 256-bit
+  validators for dirty 512-byte windows; machines without AVX2 use the standard
+  library fallback.
 - Other architectures, and builds without `GOEXPERIMENT=simd`, use the pure Go
   fallback.
 

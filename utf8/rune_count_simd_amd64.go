@@ -8,5 +8,5 @@ func runeCountSIMD(p []byte) (int, bool) {
 	if archsimd.X86.AVX512() {
 		return runeCountAVX512(p)
 	}
-	return runeCountSIMD128(p)
+	return runeCountAVX2(p)
 }

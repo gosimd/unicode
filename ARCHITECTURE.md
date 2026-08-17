@@ -47,6 +47,7 @@ allocate.
 | --- | --- |
 | `valid_simd.go` | SIMD `Valid` and `ValidString` entry points. |
 | `rune_count_simd.go` | SIMD `RuneCount`, `RuneCountInString`, and shared 128-bit counting loop. |
+| `rune_count_simd_avx2.go` | AVX2 lookup validator and fused continuation-byte sum. |
 | `rune_count_simd_avx512.go` | AVX-512 lookup validator and fused continuation-byte sum. |
 | `continuation_count_*.go` | Architecture-specific continuation-mask reduction for rune counting. |
 | `utf8_simd_common.go` | Shared chunk sizes, byte classification, scalar tail state, and masks. |
@@ -65,9 +66,9 @@ dirty windows with sixteen native 32-byte vectors. `VPERM2I128` carries bytes
 between each vector's two 128-bit shuffle groups. AVX-512 uses the same window
 shape with eight native 64-byte vectors and a 64-bit lane permutation. Both
 wide paths perform three grouped nibble lookups per vector and reduce
-accumulated errors once per window. A final short tail is validated with a
-small scalar state machine. AVX2 `RuneCount` continues to use the shared
-128-bit loop.
+accumulated errors once per window. `RuneCount` uses the same native vector
+widths and accumulates continuation-class flags while validating. A final
+short tail is handled with a small scalar state machine.
 
 See [docs/Valid.md](docs/Valid.md) for the detailed algorithm.
 
@@ -113,13 +114,13 @@ delegate `Encode` to the standard library.
 
 ## SIMD rune counting
 
-`RuneCount` validates and counts valid input in one traversal. NEON and AVX2
-use the 64-byte/16-byte shapes and boundary carry from `Valid`, then subtract
-the population count of continuation masks. AVX-512 uses the native lookup
-validator on 512-byte windows. Its expected-continuation vector contains
-`0x80` for every continuation position; `VPSADBW` accumulates those values in
-eight 64-bit lanes, which are reduced once at the end. If validation fails,
-the implementation falls back to `unicode/utf8.RuneCount`, preserving the
+`RuneCount` validates and counts valid input in one traversal. NEON uses the
+64-byte/16-byte shape and subtracts the population count of continuation
+masks. AVX2 and AVX-512 use their native lookup validators on 512-byte windows.
+Their current-byte lookup vectors contain the `0x02` class bit for every
+continuation byte; `VPSADBW` accumulates those values in four AVX2 or eight
+AVX-512 64-bit lanes, which are reduced once at the end. If validation fails, the
+implementation falls back to `unicode/utf8.RuneCount`, preserving the
 requirement that each malformed or truncated byte is a width-1 error rune.
 
 ## Correctness and performance policy
