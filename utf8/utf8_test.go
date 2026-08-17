@@ -50,6 +50,18 @@ func TestAppendRuneMatchesStandardLibrary(t *testing.T) {
 	}
 }
 
+func TestDecodeMatchesLanguageConversion(t *testing.T) {
+	for _, tt := range utf8StringInputsForWholeBuffer() {
+		t.Run(tt.name, func(t *testing.T) {
+			got := simdutf8.Decode(tt.data)
+			want := []rune(tt.data)
+			if !equalRunes(got, want) {
+				t.Fatalf("Decode(%q) = %U, want %U", tt.data, got, want)
+			}
+		})
+	}
+}
+
 func TestDecodeRuneMatchesStandardLibrary(t *testing.T) {
 	for _, tt := range utf8ByteInputs() {
 		t.Run(tt.name, func(t *testing.T) {
@@ -128,6 +140,26 @@ func TestDecodeLastRuneInStringMatchesStandardLibrary(t *testing.T) {
 				t.Fatalf("DecodeLastRuneInString(%q) = (%U, %d), want (%U, %d)", tt.data, gotRune, gotSize, wantRune, wantSize)
 			}
 		})
+	}
+}
+
+func TestEncodeMatchesLanguageConversion(t *testing.T) {
+	tests := [][]rune{
+		nil,
+		{},
+		{'A'},
+		{'¢'},
+		{'世'},
+		{'😀'},
+		{stdutf8.MaxRune},
+		{stdutf8.MaxRune + 1},
+		{-1},
+		{0xD800},
+	}
+	for _, input := range tests {
+		if got, want := simdutf8.Encode(input), string(input); got != want {
+			t.Fatalf("Encode(%U) = %q, want %q", input, got, want)
+		}
 	}
 }
 
@@ -523,6 +555,18 @@ func cloneBytes(p []byte) []byte {
 		return nil
 	}
 	return append([]byte(nil), p...)
+}
+
+func equalRunes(left, right []rune) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for i := range left {
+		if left[i] != right[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func utf8ByteInputs() []struct {

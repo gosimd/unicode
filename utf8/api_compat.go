@@ -3,9 +3,9 @@ package utf8
 import stdutf8 "unicode/utf8"
 
 // Compile-time API compatibility checks. Go has no package-level interface,
-// so every exported function is checked against the standard-library type.
-// This file is intentionally untagged: it verifies every supported build,
-// including the SIMD and fallback implementations.
+// so every standard-library-compatible exported function is checked against
+// the standard-library type. This file is intentionally untagged: it verifies
+// every supported build, including the SIMD and fallback implementations.
 var (
 	_ func([]byte, rune) []byte = stdutf8.AppendRune
 	_ func([]byte) (rune, int)  = stdutf8.DecodeLastRune

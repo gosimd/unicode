@@ -12,7 +12,9 @@ Other `gosimd` libraries will cover domains such as JSON and general encoding.
 ## Current UTF-8 implementation
 
 The public UTF-8 package is `github.com/gosimd/unicode/utf8`. It mirrors the
-current `unicode/utf8` API and accelerates selected whole-buffer operations:
+current `unicode/utf8` API, adds `Encode([]rune)` and `Decode(string)` as
+language-conversion conveniences, and accelerates selected whole-buffer
+operations:
 
 ```go
 package main

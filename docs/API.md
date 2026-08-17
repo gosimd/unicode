@@ -8,18 +8,18 @@ Import:
 import "github.com/gosimd/unicode/utf8"
 ```
 
-`github.com/gosimd/unicode/utf8` is the public UTF-8 package. It mirrors the
-API and behaviour of the repository's Go 1.27rc1 baseline, `unicode/utf8`, so
-a caller can replace that import without changing call sites. The SIMD
-implementation is an internal detail: results never depend on CPU architecture
-or build flags.
+`github.com/gosimd/unicode/utf8` mirrors the API and behaviour of the
+repository's Go 1.27rc1 baseline, `unicode/utf8`, and adds whole-buffer
+`Encode` and `Decode` conversions that the standard package leaves to language
+syntax. The SIMD implementation is an internal detail: results never depend on
+CPU architecture or build flags.
 
 | Kind | Names |
 | --- | --- |
 | Constants | `RuneError`, `RuneSelf`, `MaxRune`, `UTFMax` |
 | Validation | `Valid`, `ValidString`, `ValidRune` |
-| Decoding | `DecodeRune`, `DecodeRuneInString`, `DecodeLastRune`, `DecodeLastRuneInString` |
-| Encoding | `AppendRune`, `EncodeRune`, `RuneLen` |
+| Decoding | `Decode`, `DecodeRune`, `DecodeRuneInString`, `DecodeLastRune`, `DecodeLastRuneInString` |
+| Encoding | `AppendRune`, `Encode`, `EncodeRune`, `RuneLen` |
 | Inspection | `FullRune`, `FullRuneInString`, `RuneStart` |
 | Counting | `RuneCount`, `RuneCountInString` |
 
@@ -31,13 +31,16 @@ copying. Both forms allocate zero memory.
 `RuneCount([]byte)` and `RuneCountInString(string)` validate and count valid
 UTF-8 in one SIMD traversal on supported builds. For malformed input they fall
 back to `unicode/utf8.RuneCount` semantics, where erroneous and short encodings
-count as one width-1 `RuneError` each. Every other API delegates directly to
-the standard library because its input is at most one rune or a few bytes and
-does not benefit from whole-buffer SIMD processing.
+count as one width-1 `RuneError` each. `Encode([]rune)` is equivalent to
+`string(runes)`, and `Decode(string)` is equivalent to `[]rune(string)`;
+both currently use those language conversions directly. Every remaining API
+delegates directly to the standard library because its input is at most one
+rune or a few bytes and does not benefit from whole-buffer SIMD processing.
 
 The compatibility surface is reviewed when the Go baseline changes. New
 exports in `unicode/utf8` are intentionally added here with matching tests;
-Go does not provide a package-wide re-export mechanism.
+`Encode` and `Decode` are intentional extensions. Go does not provide a
+package-wide re-export mechanism.
 
 ## UTF-16 package
 

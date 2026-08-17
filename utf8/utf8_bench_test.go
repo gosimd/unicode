@@ -2,6 +2,7 @@ package utf8_test
 
 import (
 	"bytes"
+	"slices"
 	"strings"
 	"testing"
 	stdutf8 "unicode/utf8"
@@ -10,8 +11,11 @@ import (
 )
 
 var (
-	benchBoolSink bool
-	benchIntSink  int
+	benchBoolSink      bool
+	benchByteSink      []byte
+	benchIntSink       int
+	benchRuneSliceSink []rune
+	benchStringSink    string
 )
 
 func BenchmarkValid(b *testing.B) {
@@ -101,6 +105,93 @@ func BenchmarkRuneCountInString(b *testing.B) {
 					benchIntSink = simdutf8.RuneCountInString(input.data)
 				}
 			})
+		})
+	}
+}
+
+// BenchmarkEncode measures the full language-conversion API and an equivalent
+// caller-buffer core loop. The core variant excludes result allocation.
+func BenchmarkEncode(b *testing.B) {
+	for _, input := range utf8BenchStringInputs() {
+		runes := []rune(input.data)
+		encodedBytes := len(simdutf8.Encode(runes))
+		b.Run(input.name, func(b *testing.B) {
+			b.Run("full", func(b *testing.B) {
+				b.ReportAllocs()
+				b.SetBytes(int64(encodedBytes))
+				for b.Loop() {
+					benchStringSink = simdutf8.Encode(runes)
+				}
+			})
+			b.Run("core", func(b *testing.B) {
+				out := make([]byte, 0, encodedBytes)
+				b.ReportAllocs()
+				b.SetBytes(int64(encodedBytes))
+				for b.Loop() {
+					benchByteSink = encodeCore(runes, out[:0])
+				}
+			})
+		})
+	}
+}
+
+// BenchmarkDecode measures the full language-conversion API and an equivalent
+// caller-buffer core loop. The core variant excludes result allocation.
+func BenchmarkDecode(b *testing.B) {
+	for _, input := range utf8BenchStringInputs() {
+		b.Run(input.name, func(b *testing.B) {
+			b.Run("full", func(b *testing.B) {
+				b.ReportAllocs()
+				b.SetBytes(int64(len(input.data)))
+				for b.Loop() {
+					benchRuneSliceSink = simdutf8.Decode(input.data)
+				}
+			})
+			b.Run("core", func(b *testing.B) {
+				out := make([]rune, 0, simdutf8.RuneCountInString(input.data))
+				b.ReportAllocs()
+				b.SetBytes(int64(len(input.data)))
+				for b.Loop() {
+					benchRuneSliceSink = decodeCore(input.data, out[:0])
+				}
+			})
+		})
+	}
+}
+
+// encodeCore is the AppendRune form of string(s), with caller-owned output so
+// BenchmarkEncode/core excludes result allocation.
+func encodeCore(s []rune, out []byte) []byte {
+	for _, r := range s {
+		out = stdutf8.AppendRune(out, r)
+	}
+	return out
+}
+
+// decodeCore is the DecodeRuneInString form of []rune(s), with caller-owned
+// output so BenchmarkDecode/core excludes result allocation.
+func decodeCore(s string, out []rune) []rune {
+	for len(s) > 0 {
+		r, size := stdutf8.DecodeRuneInString(s)
+		out = append(out, r)
+		s = s[size:]
+	}
+	return out
+}
+
+func TestCoreConversionsMatchPublicAPI(t *testing.T) {
+	for _, input := range utf8BenchStringInputs() {
+		t.Run(input.name, func(t *testing.T) {
+			runes := []rune(input.data)
+			encoded := encodeCore(runes, make([]byte, 0, len(simdutf8.Encode(runes))))
+			if got, want := string(encoded), simdutf8.Encode(runes); got != want {
+				t.Fatalf("encodeCore = %q, want %q", got, want)
+			}
+
+			decoded := decodeCore(input.data, make([]rune, 0, simdutf8.RuneCountInString(input.data)))
+			if want := simdutf8.Decode(input.data); !slices.Equal(decoded, want) {
+				t.Fatalf("decodeCore = %U, want %U", decoded, want)
+			}
 		})
 	}
 }
