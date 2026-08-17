@@ -105,14 +105,18 @@ classifies two four-rune NEON vectors at a time. When all eight lanes are
 valid BMP code points outside `U+D800`–`U+DFFF`, `VXTN` narrows both vectors;
 their low 64-bit halves are interleaved and stored as eight contiguous
 `uint16` values. On AVX2-equipped amd64, the length pass first reduces each
-32-rune window with `VPMAXUD`. Inputs entirely below `U+D800` select a
-predicate-free encoder unrolled to 64 runes; `VPACKUSDW` narrows pairs of YMM
-vectors and `VPERMD` restores sequential lane order. Other inputs use checked
-16-rune blocks with a bitwise non-BMP/surrogate predicate and the same packing
-sequence. Rejected blocks are encoded scalarly, covering non-BMP code points,
-surrogate values, and invalid runes with exact `unicode/utf16.Encode` output
-and result capacity. amd64 without AVX2 and all unsupported builds delegate
-`Encode` to the standard library.
+32-rune window with `VPMAXUD`; `VPSADBW` accumulates the non-BMP count while
+packed 16-bit comparisons prove that the input contains valid Unicode scalar
+values. Inputs entirely below `U+D800` select a predicate-free encoder
+unrolled to 64 runes; `VPACKUSDW` narrows pairs of YMM vectors and `VPERMD`
+restores sequential lane order. Inputs made entirely of non-BMP scalars use a
+32-rune-unrolled loop that writes each high/low surrogate pair as one packed
+`uint32`. Valid mixed input is encoded four runes at a time; a 16-entry
+`VPSHUFB` table compacts the variable four-to-eight-code-unit result. Other
+BMP input uses checked 16-rune blocks. Surrogate values and invalid runes use
+the scalar fallback with exact `unicode/utf16.Encode` output and result
+capacity. amd64 without AVX2 and all unsupported builds delegate `Encode` to
+the standard library.
 
 ## SIMD rune counting
 

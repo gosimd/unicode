@@ -50,9 +50,10 @@ on arm64 or AVX2 on amd64 when built with `GOEXPERIMENT=simd`. AVX2 builds do
 not require AVX-512; AVX-512-capable AMD64 hosts select a separate path. On
 arm64, `Encode` narrows clean eight-rune blocks. AVX2 uses a predicate-free,
 64-rune-unrolled path for text below `U+D800` and checked 16-rune blocks for
-other BMP text. Blocks containing non-BMP, surrogate, or invalid runes retain
-the standard-library scalar behaviour; unsupported builds delegate to the
-standard library.
+other BMP text. Valid non-BMP text is converted to surrogate pairs in
+32-rune-unrolled vectors; mixed valid text uses table-driven SIMD compaction.
+Surrogate values and invalid runes retain the standard-library scalar
+behaviour; unsupported builds delegate to the standard library.
 
 ## Architecture and platform support
 
