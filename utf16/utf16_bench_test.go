@@ -10,6 +10,203 @@ import (
 var benchRunesSink []rune
 var benchCodeUnitsSink []uint16
 
+// BenchmarkReport supplies the stable, publication-oriented UTF-16 matrix
+// consumed by cmd/benchreport. Full benchmarks call the public allocating API;
+// core benchmarks reuse caller-owned output and include the length/planning
+// pass while excluding output allocation.
+func BenchmarkReport(b *testing.B) {
+	inputs := utf16ReportInputs()
+	b.Run("utf16.Encode-full", func(b *testing.B) {
+		for _, input := range inputs {
+			benchmarkReportEncodeFull(b, input.name, input.runes)
+		}
+	})
+	b.Run("utf16.Encode-core", func(b *testing.B) {
+		for _, input := range inputs {
+			benchmarkReportEncodeCore(b, input.name, input.runes)
+		}
+	})
+	b.Run("utf16.Decode-full", func(b *testing.B) {
+		for _, input := range inputs {
+			benchmarkReportDecodeFull(b, input.name, input.codeUnits)
+		}
+	})
+	b.Run("utf16.Decode-core", func(b *testing.B) {
+		for _, input := range inputs {
+			benchmarkReportDecodeCore(b, input.name, input.codeUnits)
+		}
+	})
+}
+
+func benchmarkReportEncodeFull(b *testing.B, name string, data []rune) {
+	b.Run(name, func(b *testing.B) {
+		b.Run("gosimd", func(b *testing.B) {
+			reportUTF16Metrics(b, len(data)*4, len(data))
+			for b.Loop() {
+				benchCodeUnitsSink = Encode(data)
+			}
+			reportUTF16SizeMetrics(b, len(data)*4, len(data))
+		})
+		b.Run("stdlib", func(b *testing.B) {
+			reportUTF16Metrics(b, len(data)*4, len(data))
+			for b.Loop() {
+				benchCodeUnitsSink = stdutf16.Encode(data)
+			}
+			reportUTF16SizeMetrics(b, len(data)*4, len(data))
+		})
+	})
+}
+
+func benchmarkReportEncodeCore(b *testing.B, name string, data []rune) {
+	b.Run(name, func(b *testing.B) {
+		out := make([]uint16, 2*len(data))
+		b.Run("gosimd", func(b *testing.B) {
+			reportUTF16Metrics(b, len(data)*4, len(data))
+			for b.Loop() {
+				plan := planEncodeSIMD(data)
+				benchCodeUnitsSink = encodeSIMDWithPlan(data, out, plan)
+			}
+			reportUTF16SizeMetrics(b, len(data)*4, len(data))
+		})
+		b.Run("stdlib", func(b *testing.B) {
+			reportUTF16Metrics(b, len(data)*4, len(data))
+			for b.Loop() {
+				capacity := encodedLengthStdlib(data)
+				benchCodeUnitsSink = encodeStdlibCore(data, out[:capacity])
+			}
+			reportUTF16SizeMetrics(b, len(data)*4, len(data))
+		})
+	})
+}
+
+func benchmarkReportDecodeFull(b *testing.B, name string, data []uint16) {
+	chars := len(stdutf16.Decode(data))
+	b.Run(name, func(b *testing.B) {
+		b.Run("gosimd", func(b *testing.B) {
+			reportUTF16Metrics(b, len(data)*2, chars)
+			for b.Loop() {
+				benchRunesSink = Decode(data)
+			}
+			reportUTF16SizeMetrics(b, len(data)*2, chars)
+		})
+		b.Run("stdlib", func(b *testing.B) {
+			reportUTF16Metrics(b, len(data)*2, chars)
+			for b.Loop() {
+				benchRunesSink = stdutf16.Decode(data)
+			}
+			reportUTF16SizeMetrics(b, len(data)*2, chars)
+		})
+	})
+}
+
+func benchmarkReportDecodeCore(b *testing.B, name string, data []uint16) {
+	chars := len(stdutf16.Decode(data))
+	b.Run(name, func(b *testing.B) {
+		out := make([]rune, len(data))
+		b.Run("gosimd", func(b *testing.B) {
+			reportUTF16Metrics(b, len(data)*2, chars)
+			for b.Loop() {
+				benchRunesSink = decodeSIMD(data, out)
+			}
+			reportUTF16SizeMetrics(b, len(data)*2, chars)
+		})
+		b.Run("stdlib", func(b *testing.B) {
+			reportUTF16Metrics(b, len(data)*2, chars)
+			for b.Loop() {
+				benchRunesSink = decodeStdlibCore(data, out[:0])
+			}
+			reportUTF16SizeMetrics(b, len(data)*2, chars)
+		})
+	})
+}
+
+func reportUTF16Metrics(b *testing.B, inputBytes, chars int) {
+	b.ReportAllocs()
+	b.SetBytes(int64(inputBytes))
+}
+
+func reportUTF16SizeMetrics(b *testing.B, inputBytes, chars int) {
+	b.ReportMetric(float64(inputBytes), "input_bytes/op")
+	b.ReportMetric(float64(chars), "chars/op")
+}
+
+func utf16ReportInputs() []struct {
+	name      string
+	runes     []rune
+	codeUnits []uint16
+} {
+	const (
+		encodeRunes     = 64 * 1024 / 4
+		decodeCodeUnits = 64 * 1024 / 2
+	)
+	patterns := []struct {
+		name string
+		data []rune
+	}{
+		{name: "ascii-only", data: []rune("The quick brown fox jumps over the lazy dog. ")},
+		{name: "mixed", data: []rune("Go: Hello, Привет, 世界! 😀 ")},
+		{name: "russian", data: []rune("Съешь ещё этих мягких французских булок, да выпей чаю. ")},
+		{name: "chinese", data: []rune("快速的棕色狐狸跳过懒狗。天地玄黄，宇宙洪荒。")},
+	}
+
+	inputs := make([]struct {
+		name      string
+		runes     []rune
+		codeUnits []uint16
+	}, 0, len(patterns))
+	for _, pattern := range patterns {
+		inputs = append(inputs, struct {
+			name      string
+			runes     []rune
+			codeUnits []uint16
+		}{
+			name:      pattern.name,
+			runes:     repeatRunes(encodeRunes, pattern.data),
+			codeUnits: repeatUTF16AtLeast(decodeCodeUnits, pattern.data),
+		})
+	}
+	return inputs
+}
+
+func repeatUTF16AtLeast(length int, pattern []rune) []uint16 {
+	encoded := stdutf16.Encode(pattern)
+	data := make([]uint16, 0, length+len(encoded))
+	for len(data) < length {
+		data = append(data, encoded...)
+	}
+	return data
+}
+
+func TestUTF16ReportInputs(t *testing.T) {
+	inputs := utf16ReportInputs()
+	if got, want := len(inputs), 4; got != want {
+		t.Fatalf("benchmark input count = %d, want %d", got, want)
+	}
+	for _, input := range inputs {
+		if got, want := len(input.runes), 64*1024/4; got != want {
+			t.Fatalf("%s Encode input has %d runes, want %d", input.name, got, want)
+		}
+		if len(input.codeUnits) < 64*1024/2 {
+			t.Fatalf("%s Decode input has %d code units, want at least 32 Ki", input.name, len(input.codeUnits))
+		}
+		if reencoded := stdutf16.Encode(stdutf16.Decode(input.codeUnits)); !equalCodeUnits(reencoded, input.codeUnits) {
+			t.Fatalf("%s Decode input is not well-formed UTF-16", input.name)
+		}
+	}
+}
+
+func equalCodeUnits(left, right []uint16) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for index := range left {
+		if left[index] != right[index] {
+			return false
+		}
+	}
+	return true
+}
+
 func BenchmarkDecode(b *testing.B) {
 	for _, input := range utf16BenchmarkInputs() {
 		b.Run(input.name, func(b *testing.B) {

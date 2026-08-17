@@ -2,7 +2,6 @@ package utf8_test
 
 import (
 	"bytes"
-	"fmt"
 	"strings"
 	"testing"
 	stdutf8 "unicode/utf8"
@@ -156,92 +155,112 @@ func utf8BenchStringInputs() []struct {
 	return stringInputs
 }
 
-// BenchmarkValidSIMDUTF8Table supplies the simdutf8-style input matrix used by
-// the generated two-column HTML report.
-func BenchmarkValidSIMDUTF8Table(b *testing.B) {
-	benchmarkValid(b, utf8SIMDUTF8BenchByteInputs())
+// BenchmarkReport supplies the stable, publication-oriented UTF-8 matrix used
+// by cmd/benchreport. Keep it separate from the broader diagnostic benchmarks
+// above so report changes do not silently remove regular benchmark coverage.
+func BenchmarkReport(b *testing.B) {
+	inputs := utf8ReportInputs()
+	b.Run("utf8.Valid", func(b *testing.B) {
+		for _, input := range inputs {
+			b.Run(input.name, func(b *testing.B) {
+				b.Run("gosimd", func(b *testing.B) {
+					reportUTF8Metrics(b, input.data)
+					for b.Loop() {
+						benchBoolSink = simdutf8.Valid(input.data)
+					}
+					reportUTF8SizeMetrics(b, input.data)
+				})
+				b.Run("stdlib", func(b *testing.B) {
+					reportUTF8Metrics(b, input.data)
+					for b.Loop() {
+						benchBoolSink = stdutf8.Valid(input.data)
+					}
+					reportUTF8SizeMetrics(b, input.data)
+				})
+			})
+		}
+	})
+	b.Run("utf8.RuneCount", func(b *testing.B) {
+		for _, input := range inputs {
+			b.Run(input.name, func(b *testing.B) {
+				b.Run("gosimd", func(b *testing.B) {
+					reportUTF8Metrics(b, input.data)
+					for b.Loop() {
+						benchIntSink = simdutf8.RuneCount(input.data)
+					}
+					reportUTF8SizeMetrics(b, input.data)
+				})
+				b.Run("stdlib", func(b *testing.B) {
+					reportUTF8Metrics(b, input.data)
+					for b.Loop() {
+						benchIntSink = stdutf8.RuneCount(input.data)
+					}
+					reportUTF8SizeMetrics(b, input.data)
+				})
+			})
+		}
+	})
 }
 
-// utf8SIMDUTF8BenchByteInputs mirrors simdutf8's benchmark matrix: a small
-// sample of Latin, Cyrillic, Chinese, and emoji text at each target size. A
-// multibyte sample can be up to three bytes longer than its target so that the
-// input always ends at a UTF-8 boundary, just as in simdutf8.
-func utf8SIMDUTF8BenchByteInputs() []struct {
+func reportUTF8Metrics(b *testing.B, data []byte) {
+	b.ReportAllocs()
+	b.SetBytes(int64(len(data)))
+}
+
+func reportUTF8SizeMetrics(b *testing.B, data []byte) {
+	b.ReportMetric(float64(len(data)), "input_bytes/op")
+	b.ReportMetric(float64(stdutf8.RuneCount(data)), "chars/op")
+}
+
+// utf8ReportInputs uses a roughly 64 KiB input for every scenario. Multibyte
+// inputs may be a few bytes larger so every buffer ends at a UTF-8 boundary.
+func utf8ReportInputs() []struct {
 	name string
 	data []byte
 } {
-	const (
-		latin    = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. "
-		cyrillic = "Съешь ещё этих мягких французских булок. "
-		chinese  = "快速的棕色狐狸跳过懒狗。"
-		emoji    = "😀👩🏽‍💻🚀✨❤️ "
-	)
-
-	charsets := []struct {
+	const targetBytes = 64 * 1024
+	patterns := []struct {
 		name string
-		data []byte
+		text string
 	}{
-		{name: "1-latin", data: []byte(latin)},
-		{name: "2-cyrillic", data: []byte(cyrillic)},
-		{name: "3-chinese", data: []byte(chinese)},
-		{name: "4-emoji", data: []byte(emoji)},
+		{name: "ascii-only", text: "The quick brown fox jumps over the lazy dog. "},
+		{name: "mixed", text: "Go: Hello, Привет, 世界! 😀 "},
+		{name: "russian", text: "Съешь ещё этих мягких французских булок, да выпей чаю. "},
+		{name: "chinese", text: "快速的棕色狐狸跳过懒狗。天地玄黄，宇宙洪荒。"},
 	}
-	sizes := []int{2, 8, 64, 512, 4 * 1024, 64 * 1024, 128 * 1024}
 
 	inputs := make([]struct {
 		name string
 		data []byte
-	}, 0, len(charsets)*len(sizes)+2)
-	inputs = append(inputs, struct {
-		name string
-		data []byte
-	}{name: "0-empty/000000", data: nil})
-	for _, charset := range charsets {
-		for _, size := range sizes {
-			data := validUTF8PrefixAtLeast(charset.data, size)
-			inputs = append(inputs, struct {
-				name string
-				data []byte
-			}{
-				name: fmt.Sprintf("%s/%06d", charset.name, len(data)),
-				data: data,
-			})
-		}
+	}, 0, len(patterns))
+	for _, pattern := range patterns {
+		inputs = append(inputs, struct {
+			name string
+			data []byte
+		}{name: pattern.name, data: repeatUTF8AtLeast(pattern.text, targetBytes)})
 	}
-	inputs = append(inputs, struct {
-		name string
-		data []byte
-	}{name: "x-error/065536", data: append([]byte{0xff}, bytes.Repeat([]byte("a"), 65535)...)})
 	return inputs
 }
 
-func validUTF8PrefixAtLeast(sample []byte, size int) []byte {
-	data := make([]byte, 0, size+stdutf8.UTFMax-1)
+func repeatUTF8AtLeast(sample string, size int) []byte {
+	data := make([]byte, 0, size+len(sample))
 	for len(data) < size {
 		data = append(data, sample...)
 	}
-	for end := size; end <= len(data); end++ {
-		if stdutf8.Valid(data[:end]) {
-			return append([]byte(nil), data[:end]...)
-		}
-	}
-	panic("benchmark sample has no valid UTF-8 prefix")
+	return data
 }
 
-func TestSIMDUTF8BenchmarkInputs(t *testing.T) {
-	inputs := utf8SIMDUTF8BenchByteInputs()
-	if got, want := len(inputs), 30; got != want {
+func TestUTF8ReportInputs(t *testing.T) {
+	inputs := utf8ReportInputs()
+	if got, want := len(inputs), 4; got != want {
 		t.Fatalf("benchmark input count = %d, want %d", got, want)
 	}
 	for _, input := range inputs {
-		if input.name == "x-error/065536" {
-			if stdutf8.Valid(input.data) {
-				t.Fatal("error benchmark input is valid UTF-8")
-			}
-			continue
-		}
 		if !stdutf8.Valid(input.data) {
 			t.Fatalf("%s is not valid UTF-8", input.name)
+		}
+		if len(input.data) < 64*1024 {
+			t.Fatalf("%s has %d bytes, want at least 64 KiB", input.name, len(input.data))
 		}
 	}
 }

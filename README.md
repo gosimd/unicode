@@ -85,25 +85,21 @@ make profile-cpu
 make profile-mem
 ```
 
-### UTF-8 validation comparison
+### Performance reports
 
-`make bench-utf8-report BENCH_COUNT=10` runs the same valid-input matrix as
-[`rusticstuff/simdutf8`](https://github.com/rusticstuff/simdutf8/tree/main/bench):
-Latin, Cyrillic, Chinese, and emoji input, plus empty input and a 64 KiB input
-with an invalid first byte. The target sizes are 2 B, 8 B, 64 B, 512 B, 4 KiB,
-64 KiB, and 128 KiB. A multibyte sample may be up to three bytes larger than
-its target so that it ends at a valid UTF-8 boundary.
+`make bench-report` measures the stable UTF-8 and UTF-16 publication matrix on
+the local machine and writes a commit-ready Markdown file under `bench/`. The
+matrix covers ASCII-only, mixed, Russian, and Chinese inputs for `utf8.Valid`,
+`utf8.RuneCount`, and the full/core variants of `utf16.Encode` and
+`utf16.Decode`. Every row compares gosimd with the equivalent standard-library
+implementation and reports time per character, input throughput, allocations,
+and speedup.
 
-It writes the raw Go benchmark output to `bench/valid.txt` and a standalone
-`bench/valid.html` table. The table has gosimd and standard-library columns;
-the smaller median `ns/op` is highlighted green. Both generated files are
-ignored by Git. `BENCH_TIME` defaults to `1s`; use a shorter value only for a
-quick smoke run, for example `BENCH_TIME=100ms BENCH_COUNT=3`. For a result
-you intend to publish, record the machine in the report too:
-
-```sh
-make bench-utf8-report BENCH_COUNT=10 BENCH_HARDWARE='Apple M4 Max, 16-core CPU'
-```
+The default report uses the median of five 1-second samples. It detects the CPU
+name, frequency when the operating system exposes it, and the active NEON,
+AVX2, or AVX-512 backend. See [bench/README.md](bench/README.md) for the exact
+workload contract, report filenames, cross-platform commands, and publication
+guidance.
 
 For a direct SIMD test run:
 
