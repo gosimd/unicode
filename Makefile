@@ -1,8 +1,8 @@
-GO ?= ../.tools/go1.27rc1/bin/go
-export GOPATH ?= /Users/ax2/gosimd/.gopath
-export GOBIN ?= /Users/ax2/gosimd/.gopath/bin
-export GOCACHE ?= /Users/ax2/gosimd/.cache/go-build
-PROFILE_DIR ?= ../.profiles
+GO ?= go
+export GOPATH ?= $(CURDIR)/.gopath
+export GOBIN ?= $(GOPATH)/bin
+export GOCACHE ?= $(CURDIR)/.cache/go-build
+PROFILE_DIR ?= .profiles
 PKG ?= ./...
 BENCH ?= .
 BENCH_COUNT ?= 1
