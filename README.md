@@ -3,10 +3,10 @@
 `gosimd` is a collection of SIMD implementations for important algorithms,
 primarily algorithms that process text and text-adjacent encodings.
 `github.com/gosimd/unicode` is the UTF-encoding member of that collection: it
-provides correct, allocation-free SIMD implementations of UTF algorithms.
+provides correct, high-performance SIMD implementations of UTF algorithms.
 
-The current focus is UTF-8 validation. A UTF-16-compatible facade is available;
-SIMD UTF-16 algorithms are planned next.
+The current focus is UTF-8 validation, counting, and encoding, together with
+SIMD UTF-16 encoding and decoding.
 Other `gosimd` libraries will cover domains such as JSON and general encoding.
 
 ## Current UTF-8 implementation
@@ -39,7 +39,9 @@ The root package provides `Valid`, `ValidString`, and `RuneCount` convenience
 facades through `github.com/gosimd/unicode/utf8`. `Valid` and `ValidString`
 use the SIMD validator when available; `ValidString` passes the string to it
 without copying. `RuneCount` has the same semantics as `unicode/utf8.RuneCount`
-and uses a SIMD one-pass validator/counter for valid UTF-8 when supported. See
+and uses a SIMD one-pass validator/counter for valid UTF-8 when supported.
+On arm64, `Encode` uses NEON to plan the exact result length, pack ASCII blocks,
+and compact variable-width UTF-8 encodings four runes at a time. See
 [docs/API.md](docs/API.md) for the full current API and
 [docs/Valid.md](docs/Valid.md) for the SIMD algorithm.
 
@@ -62,7 +64,8 @@ behaviour; unsupported builds delegate to the standard library.
 The SIMD implementation package is built with Go's `simd` experiment on
 `arm64` and `amd64`.
 
-- `arm64` uses NEON and a table-driven, fused UTF-8 validator.
+- `arm64` uses NEON for the table-driven fused UTF-8 validator, rune counting,
+  and whole-buffer UTF-8 encoding.
 - `amd64` requires AVX2 at runtime. `Valid` and `RuneCount` use native 256-bit
   validators for dirty 512-byte windows; machines without AVX2 use the standard
   library fallback.

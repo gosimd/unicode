@@ -109,26 +109,46 @@ func BenchmarkRuneCountInString(b *testing.B) {
 	}
 }
 
-// BenchmarkEncode measures the full language-conversion API and an equivalent
-// caller-buffer core loop. The core variant excludes result allocation.
+// BenchmarkEncode measures the full language-conversion APIs and equivalent
+// caller-buffer core loops. The core variants exclude result allocation;
+// simd_core also excludes the SIMD length-planning pass.
 func BenchmarkEncode(b *testing.B) {
 	for _, input := range utf8BenchStringInputs() {
 		runes := []rune(input.data)
 		encodedBytes := len(simdutf8.Encode(runes))
+		simdPlan, simdEncodedBytes, simdAvailable := simdutf8.NewEncodeSIMDBenchmarkPlan(runes)
 		b.Run(input.name, func(b *testing.B) {
-			b.Run("full", func(b *testing.B) {
+			b.Run("stdlib_full", func(b *testing.B) {
+				b.ReportAllocs()
+				b.SetBytes(int64(encodedBytes))
+				for b.Loop() {
+					benchStringSink = string(runes)
+				}
+			})
+			b.Run("simd_full", func(b *testing.B) {
 				b.ReportAllocs()
 				b.SetBytes(int64(encodedBytes))
 				for b.Loop() {
 					benchStringSink = simdutf8.Encode(runes)
 				}
 			})
-			b.Run("core", func(b *testing.B) {
+			b.Run("stdlib_core", func(b *testing.B) {
 				out := make([]byte, 0, encodedBytes)
 				b.ReportAllocs()
 				b.SetBytes(int64(encodedBytes))
 				for b.Loop() {
 					benchByteSink = encodeCore(runes, out[:0])
+				}
+			})
+			b.Run("simd_core", func(b *testing.B) {
+				if !simdAvailable {
+					b.Skip("ARM64 SIMD encoder is unavailable")
+				}
+				out := make([]byte, simdEncodedBytes+15)
+				b.ReportAllocs()
+				b.SetBytes(int64(simdEncodedBytes))
+				for b.Loop() {
+					benchByteSink = simdutf8.EncodeSIMDCoreForBenchmark(runes, out, simdPlan)
 				}
 			})
 		})

@@ -2,6 +2,7 @@ package utf8_test
 
 import (
 	"bytes"
+	"encoding/binary"
 	"testing"
 	stdutf8 "unicode/utf8"
 
@@ -147,18 +148,54 @@ func TestEncodeMatchesLanguageConversion(t *testing.T) {
 	tests := [][]rune{
 		nil,
 		{},
-		{'A'},
-		{'¢'},
-		{'世'},
-		{'😀'},
+		{0},
+		{0x7f},
+		{0x80},
+		{0x7ff},
+		{0x800},
+		{0xd7ff},
+		{0xd800},
+		{0xdfff},
+		{0xe000},
+		{0xffff},
+		{0x10000},
 		{stdutf8.MaxRune},
 		{stdutf8.MaxRune + 1},
 		{-1},
-		{0xD800},
+		{-1 << 31},
+		{1<<31 - 1},
+		{'A', '¢', '世', '😀', 0xd800, -1, stdutf8.MaxRune + 1},
 	}
 	for _, input := range tests {
 		if got, want := simdutf8.Encode(input), string(input); got != want {
 			t.Fatalf("Encode(%U) = %q, want %q", input, got, want)
+		}
+	}
+}
+
+func TestEncodeAllFourRuneLengthCombinations(t *testing.T) {
+	representatives := [...]rune{'A', '¢', '世', '😀'}
+	for selector := 0; selector < 256; selector++ {
+		input := make([]rune, 64)
+		for i := range input {
+			lane := i & 3
+			input[i] = representatives[(selector>>(2*lane))&3]
+		}
+		if got, want := simdutf8.Encode(input), string(input); got != want {
+			t.Fatalf("selector %#02x: Encode(%U) = % x, want % x", selector, input[:4], got, want)
+		}
+	}
+}
+
+func TestEncodePrefixAndTailSweep(t *testing.T) {
+	pattern := [...]rune{'A', '¢', '世', '😀', 0xd800, -1, stdutf8.MaxRune + 1}
+	for length := 0; length <= 65; length++ {
+		input := make([]rune, length)
+		for i := range input {
+			input[i] = pattern[i%len(pattern)]
+		}
+		if got, want := simdutf8.Encode(input), string(input); got != want {
+			t.Fatalf("length %d: Encode = % x, want % x", length, got, want)
 		}
 	}
 }
@@ -546,6 +583,25 @@ func FuzzRuneCountMatchesStandardLibrary(f *testing.F) {
 	f.Fuzz(func(t *testing.T, data []byte) {
 		if got, want := simdutf8.RuneCount(data), stdutf8.RuneCount(data); got != want {
 			t.Fatalf("RuneCount(% x) = %d, want %d", data, got, want)
+		}
+	})
+}
+
+func FuzzEncodeMatchesLanguageConversion(f *testing.F) {
+	f.Add([]byte{})
+	f.Add([]byte("ASCII"))
+	f.Add([]byte{0x00, 0xd8, 0x00, 0x00, 0xff, 0xff, 0x10, 0x00})
+	f.Fuzz(func(t *testing.T, data []byte) {
+		runes := make([]rune, 0, (len(data)+3)/4)
+		for len(data) >= 4 {
+			runes = append(runes, rune(int32(binary.LittleEndian.Uint32(data))))
+			data = data[4:]
+		}
+		for _, b := range data {
+			runes = append(runes, rune(int8(b)))
+		}
+		if got, want := simdutf8.Encode(runes), string(runes); got != want {
+			t.Fatalf("Encode(%U) = % x, want % x", runes, got, want)
 		}
 	})
 }

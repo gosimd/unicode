@@ -46,12 +46,6 @@ func DecodeRuneInString(s string) (r rune, size int) {
 	return stdutf8.DecodeRuneInString(s)
 }
 
-// Encode returns the UTF-8 encoding of s. Runes outside the valid Unicode
-// range are replaced by RuneError, as in the language conversion string(s).
-func Encode(s []rune) string {
-	return string(s)
-}
-
 // EncodeRune writes into p the UTF-8 encoding of r and returns the number of
 // bytes written. If the rune is out of range, it writes the encoding of
 // RuneError.

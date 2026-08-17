@@ -32,10 +32,15 @@ copying. Both forms allocate zero memory.
 UTF-8 in one SIMD traversal on supported builds. For malformed input they fall
 back to `unicode/utf8.RuneCount` semantics, where erroneous and short encodings
 count as one width-1 `RuneError` each. `Encode([]rune)` is equivalent to
-`string(runes)`, and `Decode(string)` is equivalent to `[]rune(string)`;
-both currently use those language conversions directly. Every remaining API
-delegates directly to the standard library because its input is at most one
-rune or a few bytes and does not benefit from whole-buffer SIMD processing.
+`string(runes)`. On arm64 with `GOEXPERIMENT=simd`, it uses NEON for exact
+length planning, 16-rune ASCII packing, and table-driven compaction of four
+variable-width encodings. Invalid runes, including surrogate values, are
+replaced by `RuneError` exactly as in the language conversion. Unsupported
+builds use `string(runes)`. `Decode(string)` remains equivalent to
+`[]rune(string)` and currently uses that language conversion directly. Every
+remaining API delegates directly to the standard library because its input is
+at most one rune or a few bytes and does not benefit from whole-buffer SIMD
+processing.
 
 The compatibility surface is reviewed when the Go baseline changes. New
 exports in `unicode/utf8` are intentionally added here with matching tests;

@@ -4,8 +4,8 @@
 
 The UTF-8 package, `github.com/gosimd/unicode/utf8`, is the stable user-facing
 surface for UTF-8 operations. It mirrors `unicode/utf8` without exposing vector
-types, masks, CPU checks, or architecture-specific behaviour. Its `Valid` and
-`RuneCount` methods select the SIMD path when it is available.
+types, masks, CPU checks, or architecture-specific behaviour. Its `Valid`,
+`RuneCount`, and `Encode` methods select SIMD paths when they are available.
 
 The root package, `github.com/gosimd/unicode`, remains a compact convenience
 facade for `Valid`, `ValidString`, and `RuneCount`. It delegates to the public
@@ -58,7 +58,8 @@ allocate.
 | `valid_simd_avx512.go` | AVX-512 per-512-byte ASCII shortcut and lookup-based native wide validator. |
 | `ascii_amd64.go` | amd64 ASCII detector. |
 | `lookup_*`, `zero_*` | Architecture-specific table lookup and zero reduction helpers. |
-| `valid_fallback.go`, `rune_count_fallback.go` | Non-SIMD standard-library fallbacks. |
+| `encode_simd_arm64.go` | NEON UTF-8 length planning, ASCII packing, and variable-width encoding. |
+| `valid_fallback.go`, `rune_count_fallback.go`, `encode_fallback.go` | Non-SIMD standard-library fallbacks. |
 
 The ARM64 loop and the amd64 baseline work on four 16-byte vectors (64 bytes).
 The primary AVX2 `Valid` path tests 512-byte windows for ASCII and validates
@@ -71,6 +72,25 @@ widths and accumulates continuation-class flags while validating. A final
 short tail is handled with a small scalar state machine.
 
 See [docs/Valid.md](docs/Valid.md) for the detailed algorithm.
+
+## SIMD UTF-8 encoding
+
+`utf8.Encode` preserves the language conversion contract `string([]rune)`.
+Negative runes, surrogate values, and values above `U+10FFFF` are normalized
+to `RuneError`. On arm64 with `GOEXPERIMENT=simd`, a first NEON pass normalizes
+those values for classification, computes the exact encoded length, and detects
+an all-ASCII input. The result buffer is allocated once with 15 private padding
+bytes, allowing each four-rune encoder to issue one full 16-byte store without
+a partial-store branch. The returned string excludes the padding.
+
+The ASCII path narrows sixteen `uint32` runes through `VXTN`, interleaves the
+four packed vectors, and writes sixteen bytes. The general path constructs the
+one-, two-, three-, and four-byte UTF-8 candidates in four `uint32` lanes. A
+two-bit length code per lane selects one of 256 shuffle rows; NEON `TBL`
+compacts the selected bytes into a contiguous result. Four-rune groups that mix
+ASCII and wider encodings use the scalar encoder because constructing all four
+SIMD candidates costs more for that shape. Builds without arm64 SIMD use the
+language conversion directly.
 
 ## SIMD UTF-16 decoding
 
