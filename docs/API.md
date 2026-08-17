@@ -52,9 +52,10 @@ import "github.com/gosimd/unicode/utf16"
 and `Decode`. On arm64 with `GOEXPERIMENT=simd`, `Decode` uses NEON for
 eight-code-unit chunks with no surrogates, and `Encode` narrows eight-rune
 chunks when every rune is a valid BMP code point outside the surrogate range.
-On amd64, both operations require AVX2; `Encode` uses two four-rune vectors
-and packs them into eight UTF-16 code units. Chunks containing surrogates,
-non-BMP, or invalid runes use the scalar path, preserving
+On amd64, both operations require AVX2. `Encode` packs 64 low-BMP runes per
+unrolled iteration without value checks after its length pass has classified
+the input; other BMP input uses checked 16-rune blocks. Chunks containing
+surrogates, non-BMP, or invalid runes use the scalar path, preserving
 `unicode/utf16.Encode` semantics and result capacity. Unsupported builds
 delegate to the standard library. Compile-time function-type checks keep the
 compatibility surface synchronized with the standard-library baseline.

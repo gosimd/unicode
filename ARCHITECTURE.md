@@ -104,13 +104,15 @@ that rune is invalid. On arm64 with `GOEXPERIMENT=simd`, the encoder then
 classifies two four-rune NEON vectors at a time. When all eight lanes are
 valid BMP code points outside `U+D800`–`U+DFFF`, `VXTN` narrows both vectors;
 their low 64-bit halves are interleaved and stored as eight contiguous
-`uint16` values. On AVX2-equipped amd64, it classifies the same two
-four-rune blocks and uses `VPACKUSDW` to pack them into the output vector;
-the clean-BMP predicate makes saturating packing equivalent to narrowing.
-A rejected eight-rune block is encoded scalarly, covering non-BMP code
-points, surrogate values, and invalid runes with exact `unicode/utf16.Encode`
-output and result capacity. amd64 without AVX2 and all unsupported builds
-delegate `Encode` to the standard library.
+`uint16` values. On AVX2-equipped amd64, the length pass first reduces each
+32-rune window with `VPMAXUD`. Inputs entirely below `U+D800` select a
+predicate-free encoder unrolled to 64 runes; `VPACKUSDW` narrows pairs of YMM
+vectors and `VPERMD` restores sequential lane order. Other inputs use checked
+16-rune blocks with a bitwise non-BMP/surrogate predicate and the same packing
+sequence. Rejected blocks are encoded scalarly, covering non-BMP code points,
+surrogate values, and invalid runes with exact `unicode/utf16.Encode` output
+and result capacity. amd64 without AVX2 and all unsupported builds delegate
+`Encode` to the standard library.
 
 ## SIMD rune counting
 

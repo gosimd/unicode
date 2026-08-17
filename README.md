@@ -47,11 +47,12 @@ and uses a SIMD one-pass validator/counter for valid UTF-8 when supported. See
 standard-library import can be replaced without changing call sites. Its
 `Decode` function widens eight-code-unit blocks without surrogates with NEON
 on arm64 or AVX2 on amd64 when built with `GOEXPERIMENT=simd`. AVX2 builds do
-not require AVX-512; AVX-512-capable AMD64 hosts select a separate path. On arm64 and
-AVX2-equipped amd64, `Encode` narrows eight-rune blocks when every rune is a
-valid non-surrogate BMP code point. Blocks containing non-BMP, surrogate, or
-invalid runes retain the standard-library scalar behaviour; unsupported builds
-delegate to the standard library.
+not require AVX-512; AVX-512-capable AMD64 hosts select a separate path. On
+arm64, `Encode` narrows clean eight-rune blocks. AVX2 uses a predicate-free,
+64-rune-unrolled path for text below `U+D800` and checked 16-rune blocks for
+other BMP text. Blocks containing non-BMP, surrogate, or invalid runes retain
+the standard-library scalar behaviour; unsupported builds delegate to the
+standard library.
 
 ## Architecture and platform support
 
