@@ -71,7 +71,7 @@ accumulated errors once per window. `RuneCount` uses the same native vector
 widths and accumulates continuation-class flags while validating. A final
 short tail is handled with a small scalar state machine.
 
-See [docs/Valid.md](docs/Valid.md) for the detailed algorithm.
+See [docs/utf8/Valid.md](docs/utf8/Valid.md) for the detailed algorithm.
 
 ## SIMD UTF-8 encoding
 
@@ -105,7 +105,7 @@ and mixed blocks construct UTF-8 candidates in sixteen dword lanes, then four
 independent `VPSHUFB` operations compact each 128-bit group. A 4096-entry table
 maps the three threshold masks to four-rune selectors. This uses only the
 AVX-512F/CD/BW/DQ/VL bundle available on Skylake; it does not require
-VBMI/VBMI2. See [docs/Encode.md](docs/Encode.md).
+VBMI/VBMI2. See [docs/utf8/Encode.md](docs/utf8/Encode.md).
 
 ## SIMD UTF-8 decoding
 
@@ -123,7 +123,8 @@ and output runes are covered and selects one of 256 NEON `TBL` shuffle rows.
 The shuffle right-aligns up to four UTF-8 sequences in `uint32` lanes; masks,
 shifts, and a three-byte correction then assemble Unicode scalar values. A
 dense two-byte mask has its own six-rune widening path. The final short tail is
-decoded scalar. See [docs/Decode.md](docs/Decode.md) for the detailed dataflow.
+decoded scalar. See [docs/utf8/Decode.md](docs/utf8/Decode.md) for the detailed
+dataflow.
 
 On AVX2, `VPMOVMSKB` produces continuation bitsets for the same masked
 twelve-byte strategy, with `VPSHUFB` replacing NEON `TBL`. Dense two-, three-,

@@ -77,4 +77,5 @@ Surrogate values and invalid runes use the scalar path, preserving
 delegate to the standard library. Compile-time function-type checks keep the
 compatibility surface synchronized with the standard-library baseline.
 
-For implementation details, see [Valid.md](Valid.md) and [Decode.md](Decode.md).
+For UTF-8 implementation details, see [validation](utf8/Valid.md),
+[encoding](utf8/Encode.md), and [decoding](utf8/Decode.md).

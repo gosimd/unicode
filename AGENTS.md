@@ -35,7 +35,7 @@ operations on UTF encodings. The first implementation target is UTF-8.
   become useful.
 - The current UTF-8 validator uses 16-byte chunks and 64-byte blocks. Preserve
   cross-chunk continuation handling, vector incomplete-sequence carry, and the
-  scalar final-tail path when changing it. Update [docs/Valid.md](docs/Valid.md)
+  scalar final-tail path when changing it. Update [docs/utf8/Valid.md](docs/utf8/Valid.md)
   and [ARCHITECTURE.md](ARCHITECTURE.md) with material algorithm changes.
 - Keep ARM64 NEON and amd64 AVX2 predicates separate when their optimal
   instruction sequences differ. amd64 without AVX2 must use the standard
