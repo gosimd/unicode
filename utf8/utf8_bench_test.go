@@ -186,7 +186,7 @@ func BenchmarkDecode(b *testing.B) {
 			plan, decodedRunes, simdAvailable := simdutf8.NewDecodeSIMDBenchmarkPlan(input.data)
 			b.Run("simd_core", func(b *testing.B) {
 				if !simdAvailable {
-					b.Skip("ARM64 SIMD decoder is unavailable for this input")
+					b.Skip("SIMD decoder is unavailable for this input")
 				}
 				out := make([]rune, decodedRunes)
 				b.ReportAllocs()

@@ -45,7 +45,8 @@ and compact variable-width UTF-8 encodings four runes at a time. See
 [docs/API.md](docs/API.md) for the full current API and
 [docs/Valid.md](docs/Valid.md) and [docs/Decode.md](docs/Decode.md) for the SIMD
 algorithms. `Decode` validates and counts first, allocates the exact result,
-widens 64-byte ASCII blocks, and uses a NEON table decoder for non-ASCII text.
+widens 64-byte ASCII blocks, and uses a NEON table decoder on arm64, an AVX2
+table decoder on amd64, or a compressed decoder on AVX-512-capable hosts.
 
 ## UTF-16 compatibility package
 
@@ -68,9 +69,10 @@ The SIMD implementation package is built with Go's `simd` experiment on
 
 - `arm64` uses NEON for the table-driven fused UTF-8 validator, rune counting,
   and whole-buffer UTF-8 encoding and decoding.
-- `amd64` requires AVX2 at runtime. `Valid` and `RuneCount` use native 256-bit
-  validators for dirty 512-byte windows; machines without AVX2 use the standard
-  library fallback.
+- `amd64` requires AVX2 at runtime. `Valid`, `RuneCount`, and `Decode` use AVX2
+  implementations and dynamically select wider AVX-512 paths when available;
+  machines without AVX2 use the standard-library or language-conversion
+  fallback.
 - Other architectures, and builds without `GOEXPERIMENT=simd`, use the pure Go
   fallback.
 

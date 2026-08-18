@@ -1,9 +1,9 @@
-//go:build !goexperiment.simd || !arm64
+//go:build !goexperiment.simd || (!arm64 && !amd64)
 
 package utf8
 
-// DecodeSIMDBenchmarkPlan keeps the benchmark source buildable when the ARM64
-// SIMD implementation is unavailable.
+// DecodeSIMDBenchmarkPlan keeps the benchmark source buildable when a SIMD
+// decoder is unavailable.
 type DecodeSIMDBenchmarkPlan struct{}
 
 func NewDecodeSIMDBenchmarkPlan(string) (DecodeSIMDBenchmarkPlan, int, bool) {
@@ -11,5 +11,5 @@ func NewDecodeSIMDBenchmarkPlan(string) (DecodeSIMDBenchmarkPlan, int, bool) {
 }
 
 func DecodeSIMDCoreForBenchmark(string, []rune, DecodeSIMDBenchmarkPlan) []rune {
-	panic("utf8: ARM64 SIMD decoder is unavailable")
+	panic("utf8: SIMD decoder is unavailable")
 }

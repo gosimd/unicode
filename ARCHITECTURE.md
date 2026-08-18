@@ -61,6 +61,9 @@ allocate.
 | `lookup_*`, `zero_*` | Architecture-specific table lookup and zero reduction helpers. |
 | `encode_simd_arm64.go` | NEON UTF-8 length planning, ASCII packing, and variable-width encoding. |
 | `decode_simd_arm64.go` | NEON UTF-8 ASCII widening and table-driven masked decoding. |
+| `decode_simd_amd64.go` | Runtime dispatch between the AVX2 and AVX-512 UTF-8 decoders. |
+| `decode_simd_avx2.go` | AVX2 ASCII widening, dense decoders, and table-driven mixed decoding. |
+| `decode_simd_avx512.go` | AVX-512 ASCII widening, dense decoders, and compressed general decoding. |
 | `valid_fallback.go`, `rune_count_fallback.go`, `encode_fallback.go`, `decode_fallback.go` | Non-SIMD standard-library fallbacks. |
 
 The ARM64 loop and the amd64 baseline work on four 16-byte vectors (64 bytes).
@@ -97,10 +100,10 @@ language conversion directly.
 ## SIMD UTF-8 decoding
 
 `utf8.Decode` preserves the language conversion contract `[]rune(string)`.
-The arm64 SIMD implementation first reuses the fused validator/counter. Invalid
-input immediately delegates to the language conversion, preserving its exact
-one-byte `RuneError` recovery semantics. Valid input is allocated once at the
-exact rune count.
+The arm64, AVX2, and AVX-512 implementations first reuse their fused
+validator/counter. Invalid input immediately delegates to the language
+conversion, preserving its exact one-byte `RuneError` recovery semantics.
+Valid input is allocated once at the exact rune count.
 
 The decoder handles 64-byte ASCII windows by widening bytes to `uint16` and
 then `uint32` before four-lane stores. For non-ASCII windows it converts the
@@ -111,6 +114,18 @@ The shuffle right-aligns up to four UTF-8 sequences in `uint32` lanes; masks,
 shifts, and a three-byte correction then assemble Unicode scalar values. A
 dense two-byte mask has its own six-rune widening path. The final short tail is
 decoded scalar. See [docs/Decode.md](docs/Decode.md) for the detailed dataflow.
+
+On AVX2, `VPMOVMSKB` produces continuation bitsets for the same masked
+twelve-byte strategy, with `VPSHUFB` replacing NEON `TBL`. Dense two-, three-,
+and four-byte input is decoded in 64-, 48-, and 64-byte blocks respectively.
+
+On AVX-512, an ASCII block widens 64 bytes through four `VPMOVZXBD`
+conversions. A general block derives one 64-bit continuation mask, composes
+UTF-32 candidates for each fixed 16-byte group with `VPALIGNR`, nibble-table
+lookups, and variable shifts, then packs rune-start lanes with `VPCOMPRESSD`.
+Dedicated 64-byte two- and four-byte paths and a 48-byte three-byte shuffle
+path avoid compaction for uniform text. The common amd64 entry selects AVX-512
+when available, otherwise AVX2; hosts without AVX2 use the language conversion.
 
 ## SIMD UTF-16 decoding
 

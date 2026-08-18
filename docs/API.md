@@ -39,11 +39,13 @@ replaced by `RuneError` exactly as in the language conversion. Unsupported
 builds use `string(runes)`. `Decode(string)` remains equivalent to
 `[]rune(string)`. On arm64 with `GOEXPERIMENT=simd`, it validates and counts in
 one NEON pass, allocates the exact rune slice, widens ASCII blocks, and uses a
-table-driven masked decoder for valid non-ASCII input. Malformed input falls
-back to the language conversion so replacement-rune recovery remains exact.
-Unsupported builds use `[]rune(string)` directly. Every remaining API delegates
-to the standard library because its input is at most one rune or a few bytes
-and does not benefit from whole-buffer SIMD processing.
+table-driven masked decoder for valid non-ASCII input. amd64 hosts use an AVX2
+table decoder and dynamically select 64-byte AVX-512 dense decoders plus a
+`VPCOMPRESSD` general path when available. Malformed input falls back to the
+language conversion so replacement-rune recovery remains exact. amd64 without
+AVX2 and unsupported builds use `[]rune(string)` directly. Every remaining API
+delegates to the standard library because its input is at most one rune or a
+few bytes and does not benefit from whole-buffer SIMD processing.
 
 The compatibility surface is reviewed when the Go baseline changes. New
 exports in `unicode/utf8` are intentionally added here with matching tests;
