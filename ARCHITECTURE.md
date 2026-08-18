@@ -8,10 +8,6 @@ types, masks, CPU checks, or architecture-specific behaviour. Its `Valid`,
 `RuneCount`, `Encode`, and `Decode` methods select SIMD paths when they are
 available.
 
-The root package, `github.com/gosimd/unicode`, remains a compact convenience
-facade for `Valid`, `ValidString`, and `RuneCount`. It delegates to the public
-UTF-8 package.
-
 The UTF-16 package, `github.com/gosimd/unicode/utf16`, mirrors
 `unicode/utf16`. Its `Decode` function selects a whole-buffer SIMD path on
 arm64 with NEON or amd64 with AVX2 when `GOEXPERIMENT=simd` is enabled.
@@ -21,9 +17,6 @@ AVX2-equipped amd64. Its other functions are standard-library facades.
 ## Validation dispatch
 
 ```text
-utf.Valid([]byte) -> gosimd/unicode/utf8.Valid([]byte)
-utf.RuneCount([]byte) -> gosimd/unicode/utf8.RuneCount([]byte)
-
 gosimd/unicode/utf8.Valid([]byte)
 gosimd/unicode/utf8.RuneCount([]byte)
         |
@@ -37,10 +30,9 @@ The fallback is part of the correctness contract, not an exceptional path.
 Every implementation must return the same result as its corresponding
 `unicode/utf8` function.
 
-`unicode/utf8.ValidString` and `RuneCountInString` create read-only,
-zero-copy byte views when the SIMD implementation is available. The root
-package exposes `ValidString`; both supported and fallback paths do not
-allocate.
+`utf8.ValidString` and `RuneCountInString` create read-only, zero-copy byte
+views when the SIMD implementation is available. Both supported and fallback
+paths do not allocate.
 
 ## SIMD implementation layout
 

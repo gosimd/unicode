@@ -23,17 +23,6 @@
       "program": "${fileDirname}"
     },
     {
-      "name": "Go: debug root tests (SIMD, registers)",
-      "type": "go",
-      "request": "launch",
-      "mode": "test",
-      "program": "${workspaceFolder}",
-      "env": {
-        "GOEXPERIMENT": "simd"
-      },
-      "showRegisters": true
-    },
-    {
       "name": "Go: debug bench-report tests (SIMD, registers)",
       "type": "go",
       "request": "launch",
@@ -60,7 +49,6 @@
     {
       "name": "Go: debug all tests (SIMD, registers)",
       "configurations": [
-        "Go: debug root tests (SIMD, registers)",
         "Go: debug bench-report tests (SIMD, registers)",
         "Go: debug UTF-8 tests (SIMD, registers)"
       ],

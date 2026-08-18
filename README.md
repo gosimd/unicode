@@ -35,11 +35,6 @@ Its result is identical to `unicode/utf8.Valid`. The implementation selects
 SIMD only where it is supported and otherwise uses a safe standard-library
 fallback.
 
-The root package provides `Valid`, `ValidString`, and `RuneCount` convenience
-facades through `github.com/gosimd/unicode/utf8`. `Valid` and `ValidString`
-use the SIMD validator when available; `ValidString` passes the string to it
-without copying. `RuneCount` has the same semantics as `unicode/utf8.RuneCount`
-and uses a SIMD one-pass validator/counter for valid UTF-8 when supported.
 On arm64, `Encode` uses NEON to plan the exact result length, pack ASCII blocks,
 and compact variable-width UTF-8 encodings four runes at a time. On amd64 it
 dispatches between an AVX2 baseline and an AVX-512 encoder with 64-rune ASCII
@@ -153,8 +148,8 @@ uses Delve's DAP adapter and shows registers. Delve compiles debug sessions
 without optimizations and inlining; use the task above when inspecting
 release-style optimized code.
 
-To start every package's tests under Delve, choose
+To start the selected packages' tests under Delve, choose
 `Go: debug all tests (SIMD, registers)` from the Run and Debug selector. Go
-tests are separate executables per package, so this compound starts the root,
-`cmd/benchreport`, and `utf8` test sessions together. Select the
+tests are separate executables per package, so this compound starts
+`cmd/benchreport` and `utf8` test sessions together. Select the
 stopped session of interest before opening the Disassembly View.

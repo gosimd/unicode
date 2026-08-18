@@ -77,15 +77,4 @@ Surrogate values and invalid runes use the scalar path, preserving
 delegate to the standard library. Compile-time function-type checks keep the
 compatibility surface synchronized with the standard-library baseline.
 
-## Root package
-
-Import:
-
-```go
-import "github.com/gosimd/unicode"
-```
-
-The root package is a smaller convenience facade exposing `Valid`,
-`ValidString`, and `RuneCount`. It delegates to `github.com/gosimd/unicode/utf8`.
-
 For implementation details, see [Valid.md](Valid.md) and [Decode.md](Decode.md).
