@@ -142,7 +142,7 @@ func BenchmarkEncode(b *testing.B) {
 			})
 			b.Run("simd_core", func(b *testing.B) {
 				if !simdAvailable {
-					b.Skip("ARM64 SIMD encoder is unavailable")
+					b.Skip("SIMD encoder is unavailable")
 				}
 				out := make([]byte, simdEncodedBytes+15)
 				b.ReportAllocs()

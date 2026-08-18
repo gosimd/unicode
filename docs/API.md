@@ -36,7 +36,10 @@ count as one width-1 `RuneError` each. `Encode([]rune)` is equivalent to
 length planning, 16-rune ASCII packing, and table-driven compaction of four
 variable-width encodings. Invalid runes, including surrogate values, are
 replaced by `RuneError` exactly as in the language conversion. Unsupported
-builds use `string(runes)`. `Decode(string)` remains equivalent to
+builds use `string(runes)`. On amd64, AVX2 is the minimum runtime feature and a
+separate AVX-512 implementation plans 16 runes at a time, packs 64-rune ASCII
+blocks, and uses dense two-/four-byte encoders plus grouped `VPSHUFB`
+compaction. It requires no AVX-512 VBMI/VBMI2 features. `Decode(string)` remains equivalent to
 `[]rune(string)`. On arm64 with `GOEXPERIMENT=simd`, it validates and counts in
 one NEON pass, allocates the exact rune slice, widens ASCII blocks, and uses a
 table-driven masked decoder for valid non-ASCII input. amd64 hosts use an AVX2

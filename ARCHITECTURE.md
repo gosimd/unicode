@@ -60,6 +60,9 @@ allocate.
 | `ascii_amd64.go` | amd64 ASCII detector. |
 | `lookup_*`, `zero_*` | Architecture-specific table lookup and zero reduction helpers. |
 | `encode_simd_arm64.go` | NEON UTF-8 length planning, ASCII packing, and variable-width encoding. |
+| `encode_simd_amd64.go` | Public UTF-8 Encode entry and AVX2/AVX-512 runtime dispatch. |
+| `encode_simd_avx2.go` | Correctness-first AVX2 baseline with eight-rune ASCII packing. |
+| `encode_simd_avx512.go` | AVX-512 length planning, dense encoders, and grouped variable-width compaction. |
 | `decode_simd_arm64.go` | NEON UTF-8 ASCII widening and table-driven masked decoding. |
 | `decode_simd_amd64.go` | Runtime dispatch between the AVX2 and AVX-512 UTF-8 decoders. |
 | `decode_simd_avx2.go` | AVX2 ASCII widening, dense decoders, and table-driven mixed decoding. |
@@ -94,8 +97,23 @@ one-, two-, three-, and four-byte UTF-8 candidates in four `uint32` lanes. A
 two-bit length code per lane selects one of 256 shuffle rows; NEON `TBL`
 compacts the selected bytes into a contiguous result. Four-rune groups that mix
 ASCII and wider encodings use the scalar encoder because constructing all four
-SIMD candidates costs more for that shape. Builds without arm64 SIMD use the
-language conversion directly.
+SIMD candidates costs more for that shape.
+
+On amd64, the common entry requires AVX2 and dynamically chooses AVX-512 when
+available. The AVX2 branch is currently a correctness-first baseline with an
+eight-rune ASCII pack; its non-ASCII path is deliberately left for a separate
+optimization pass. The AVX-512 planner checks 64-rune ASCII blocks, otherwise
+normalizes invalid runes and counts the three UTF-8 length thresholds in
+16-rune vectors. It records whether the input is valid so the encoder does not
+repeat normalization predicates.
+
+AVX-512 ASCII encoding narrows four 16-rune vectors with `VPMOVDB`. Uniform
+two-byte and four-byte blocks use `VPMOVDW` and direct dword stores. Three-byte
+and mixed blocks construct UTF-8 candidates in sixteen dword lanes, then four
+independent `VPSHUFB` operations compact each 128-bit group. A 4096-entry table
+maps the three threshold masks to four-rune selectors. This uses only the
+AVX-512F/CD/BW/DQ/VL bundle available on Skylake; it does not require
+VBMI/VBMI2. See [docs/Encode.md](docs/Encode.md).
 
 ## SIMD UTF-8 decoding
 

@@ -41,10 +41,12 @@ use the SIMD validator when available; `ValidString` passes the string to it
 without copying. `RuneCount` has the same semantics as `unicode/utf8.RuneCount`
 and uses a SIMD one-pass validator/counter for valid UTF-8 when supported.
 On arm64, `Encode` uses NEON to plan the exact result length, pack ASCII blocks,
-and compact variable-width UTF-8 encodings four runes at a time. See
+and compact variable-width UTF-8 encodings four runes at a time. On amd64 it
+dispatches between an AVX2 baseline and an AVX-512 encoder with 64-rune ASCII
+packing and grouped variable-width compaction. See
 [docs/API.md](docs/API.md) for the full current API and
-[docs/Valid.md](docs/Valid.md) and [docs/Decode.md](docs/Decode.md) for the SIMD
-algorithms. `Decode` validates and counts first, allocates the exact result,
+[docs/Valid.md](docs/Valid.md), [docs/Encode.md](docs/Encode.md), and
+[docs/Decode.md](docs/Decode.md) for the SIMD algorithms. `Decode` validates and counts first, allocates the exact result,
 widens 64-byte ASCII blocks, and uses a NEON table decoder on arm64, an AVX2
 table decoder on amd64, or a compressed decoder on AVX-512-capable hosts.
 
@@ -69,15 +71,16 @@ The SIMD implementation package is built with Go's `simd` experiment on
 
 - `arm64` uses NEON for the table-driven fused UTF-8 validator, rune counting,
   and whole-buffer UTF-8 encoding and decoding.
-- `amd64` requires AVX2 at runtime. `Valid`, `RuneCount`, and `Decode` use AVX2
-  implementations and dynamically select wider AVX-512 paths when available;
+- `amd64` requires AVX2 at runtime. `Valid`, `RuneCount`, `Encode`, and `Decode`
+  use AVX2 implementations and dynamically select wider AVX-512 paths when available;
   machines without AVX2 use the standard-library or language-conversion
   fallback.
 - Other architectures, and builds without `GOEXPERIMENT=simd`, use the pure Go
   fallback.
 
 The algorithms, boundary handling, and platform-specific choices are documented
-in [docs/Valid.md](docs/Valid.md) and [docs/Decode.md](docs/Decode.md). The
+in [docs/Valid.md](docs/Valid.md), [docs/Encode.md](docs/Encode.md), and
+[docs/Decode.md](docs/Decode.md). The
 repository layout and design boundaries are in
 [ARCHITECTURE.md](ARCHITECTURE.md).
 

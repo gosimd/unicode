@@ -1,9 +1,9 @@
-//go:build !goexperiment.simd || !arm64
+//go:build !goexperiment.simd || (!arm64 && !amd64)
 
 package utf8
 
-// EncodeSIMDBenchmarkPlan keeps the benchmark source buildable when the ARM64
-// SIMD implementation is unavailable.
+// EncodeSIMDBenchmarkPlan keeps the benchmark source buildable when a SIMD
+// encoder is unavailable.
 type EncodeSIMDBenchmarkPlan struct{}
 
 func NewEncodeSIMDBenchmarkPlan([]rune) (EncodeSIMDBenchmarkPlan, int, bool) {
@@ -11,5 +11,5 @@ func NewEncodeSIMDBenchmarkPlan([]rune) (EncodeSIMDBenchmarkPlan, int, bool) {
 }
 
 func EncodeSIMDCoreForBenchmark([]rune, []byte, EncodeSIMDBenchmarkPlan) []byte {
-	panic("utf8: ARM64 SIMD encoder is unavailable")
+	panic("utf8: SIMD encoder is unavailable")
 }
