@@ -20,14 +20,17 @@ const (
 )
 
 type decodeAVX2ShuffleRow struct {
-	indices    [16]uint8
-	correction [4]uint32
+	indices     [16]uint8
+	payloadMask [16]uint8
 }
 
 var decodeAVX2Entries, decodeAVX2ShuffleRows = buildDecodeAVX2Tables()
 
 var decodeAVX2Vectors = struct {
-	low7, middle6, high6, first3   [4]uint32
+	decodeByteWeights              [16]int8
+	decodeWordWeights              [8]int16
+	decodeByteWeightsWide          [32]int8
+	decodeWordWeightsWide          [16]int16
 	dense2Indices                  [16]uint8
 	dense2Low, dense2High          [8]uint16
 	dense2WideLead, dense2WideLast [16]uint16
@@ -35,10 +38,21 @@ var decodeAVX2Vectors = struct {
 	dense4High, dense4First        [8]uint32
 	dense3Lead, dense3Last         [16]uint8
 }{
-	low7:    [4]uint32{0x7f, 0x7f, 0x7f, 0x7f},
-	middle6: [4]uint32{0x0fc0, 0x0fc0, 0x0fc0, 0x0fc0},
-	high6:   [4]uint32{0x3f000, 0x3f000, 0x3f000, 0x3f000},
-	first3:  [4]uint32{0x07, 0x07, 0x07, 0x07},
+	decodeByteWeights: [16]int8{
+		64, 1, 64, 1, 64, 1, 64, 1,
+		64, 1, 64, 1, 64, 1, 64, 1,
+	},
+	decodeWordWeights: [8]int16{4096, 1, 4096, 1, 4096, 1, 4096, 1},
+	decodeByteWeightsWide: [32]int8{
+		64, 1, 64, 1, 64, 1, 64, 1,
+		64, 1, 64, 1, 64, 1, 64, 1,
+		64, 1, 64, 1, 64, 1, 64, 1,
+		64, 1, 64, 1, 64, 1, 64, 1,
+	},
+	decodeWordWeightsWide: [16]int16{
+		4096, 1, 4096, 1, 4096, 1, 4096, 1,
+		4096, 1, 4096, 1, 4096, 1, 4096, 1,
+	},
 	dense2Indices: [16]uint8{
 		1, 0, 3, 2, 5, 4, 7, 6,
 		9, 8, 11, 10, 0xff, 0xff, 0xff, 0xff,
@@ -122,12 +136,24 @@ func decodeValidAVX2(input []byte, out []rune, outputRunes int) []rune {
 		endMask := (^continuations) >> 1
 		maxStart := windowStart + decodeAVX2Window - decodeAVX2ProcessBytes
 		for i < maxStart {
-			chunk := loadDecodeChunkAVX2(inputBase, i)
-			consumed, produced := decodeMasked12AVX2(
-				chunk,
-				uint16(endMask)&0x0fff,
-				unsafe.Add(outputBase, uintptr(n)*4),
-			)
+			mask12 := uint16(endMask) & 0x0fff
+			var consumed, produced int
+			// Pairing needs 24 useful end-mask bits. The initial shift leaves 63.
+			if mask12 == 0x0fff || mask12 == 0x0aaa ||
+				i >= windowStart+decodeAVX2Window-2*decodeAVX2ProcessBytes {
+				consumed, produced = decodeMasked12AVX2(
+					loadDecodeChunkAVX2(inputBase, i),
+					mask12,
+					unsafe.Add(outputBase, uintptr(n)*4),
+				)
+			} else {
+				consumed, produced = decodeMaskedPairAVX2(
+					inputBase,
+					i,
+					endMask,
+					unsafe.Add(outputBase, uintptr(n)*4),
+				)
+			}
 			i += consumed
 			n += produced
 			endMask >>= consumed
@@ -190,16 +216,50 @@ func decodeMasked12AVX2(chunk archsimd.Uint8x16, endMask uint16, output unsafe.P
 	row := &decodeAVX2ShuffleRows[uint8(entry)]
 	packed := chunk.PermuteOrZero(
 		archsimd.LoadUint8x16Array(&row.indices).BitsToInt8(),
-	).ReshapeToUint32s()
-
-	last := packed.ShiftAllRight(24).And(archsimd.LoadUint32x4Array(&decodeAVX2Vectors.low7))
-	middle := packed.ShiftAllRight(10).And(archsimd.LoadUint32x4Array(&decodeAVX2Vectors.middle6))
-	high := packed.ShiftAllLeft(4).And(archsimd.LoadUint32x4Array(&decodeAVX2Vectors.high6))
-	first := packed.And(archsimd.LoadUint32x4Array(&decodeAVX2Vectors.first3)).ShiftAllLeft(18)
-	decoded := last.Or(middle).Or(high).Or(first).
-		Sub(archsimd.LoadUint32x4Array(&row.correction))
-	decoded.BitsToInt32().StoreArray((*[4]int32)(output))
+	)
+	payload := packed.And(archsimd.LoadUint8x16Array(&row.payloadMask))
+	pairs := payload.DotProductPairsSaturated(
+		archsimd.LoadInt8x16Array(&decodeAVX2Vectors.decodeByteWeights),
+	)
+	decoded := pairs.DotProductPairs(
+		archsimd.LoadInt16x8Array(&decodeAVX2Vectors.decodeWordWeights),
+	)
+	decoded.StoreArray((*[4]int32)(output))
 	return consumed, produced
+}
+
+//go:noinline
+func decodeMaskedPairAVX2(inputBase unsafe.Pointer, i int, endMask uint64, output unsafe.Pointer) (consumed, produced int) {
+	entry0 := decodeAVX2Entries[uint16(endMask)&0x0fff]
+	consumed0 := int(entry0 >> 8 & 0x0f)
+	produced0 := 3 + int(entry0>>12&1)
+
+	entry1 := decodeAVX2Entries[uint16(endMask>>consumed0)&0x0fff]
+	consumed1 := int(entry1 >> 8 & 0x0f)
+	produced1 := 3 + int(entry1>>12&1)
+
+	row0 := &decodeAVX2ShuffleRows[uint8(entry0)]
+	row1 := &decodeAVX2ShuffleRows[uint8(entry1)]
+	chunks := archsimd.Uint8x32{}.
+		SetLo(loadDecodeChunkAVX2(inputBase, i)).
+		SetHi(loadDecodeChunkAVX2(inputBase, i+consumed0))
+	indices := archsimd.Uint8x32{}.
+		SetLo(archsimd.LoadUint8x16Array(&row0.indices)).
+		SetHi(archsimd.LoadUint8x16Array(&row1.indices))
+	payloadMasks := archsimd.Uint8x32{}.
+		SetLo(archsimd.LoadUint8x16Array(&row0.payloadMask)).
+		SetHi(archsimd.LoadUint8x16Array(&row1.payloadMask))
+	payload := chunks.PermuteOrZeroGrouped(indices.BitsToInt8()).And(payloadMasks)
+	pairs := payload.DotProductPairsSaturated(
+		archsimd.LoadInt8x32Array(&decodeAVX2Vectors.decodeByteWeightsWide),
+	)
+	decoded := pairs.DotProductPairs(
+		archsimd.LoadInt16x16Array(&decodeAVX2Vectors.decodeWordWeightsWide),
+	)
+	// A three-rune group leaves one unused lane for the following store to replace.
+	decoded.GetLo().StoreArray((*[4]int32)(output))
+	decoded.GetHi().StoreArray((*[4]int32)(unsafe.Add(output, uintptr(produced0)*4)))
+	return consumed0 + consumed1, produced0 + produced1
 }
 
 func storeASCIIBytes16AVX2(chunk archsimd.Uint8x16, output unsafe.Pointer) {
@@ -325,9 +385,20 @@ func buildDecodeAVX2Tables() ([4096]uint16, [256]decodeAVX2ShuffleRow) {
 			destination := lane*4 + 4 - length
 			for j := 0; j < length; j++ {
 				row.indices[destination+j] = uint8(source + j)
-			}
-			if length == 3 {
-				row.correction[lane] = 0x20000
+				if j == 0 {
+					switch length {
+					case 1:
+						row.payloadMask[destination+j] = 0x7f
+					case 2:
+						row.payloadMask[destination+j] = 0x1f
+					case 3:
+						row.payloadMask[destination+j] = 0x0f
+					case 4:
+						row.payloadMask[destination+j] = 0x07
+					}
+				} else {
+					row.payloadMask[destination+j] = 0x3f
+				}
 			}
 			source += length
 		}
