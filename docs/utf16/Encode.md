@@ -131,11 +131,13 @@ Public boundary tests and fuzzing compare `Encode` directly with
 exercise AVX2 mode selection, every four-rune mixed compaction mask, tails,
 and the concrete AVX2 encoder.
 
-The implementation is split across:
+The public wrapper is [`utf16.go`](../../utf16/utf16.go); the implementation
+lives in `utf16/internal/encode`:
 
-- [`encode_simd.go`](../../utf16/encode_simd.go): shared plan and scalar loop;
-- [`encode_simd_arm64.go`](../../utf16/encode_simd_arm64.go): NEON path;
-- [`encode_simd_amd64.go`](../../utf16/encode_simd_amd64.go): runtime dispatch;
-- [`encode_simd_avx2.go`](../../utf16/encode_simd_avx2.go): AVX2 planner and encoders;
-- [`encode_simd_avx512.go`](../../utf16/encode_simd_avx512.go): AVX-512 planner and encoder;
-- [`encode_fallback.go`](../../utf16/encode_fallback.go): standard-library fallback.
+- [`encode_simd.go`](../../utf16/internal/encode/encode_simd.go): shared plan,
+  UTF-16 constants, and scalar loop;
+- [`encode_simd_arm64.go`](../../utf16/internal/encode/encode_simd_arm64.go): NEON path;
+- [`encode_simd_amd64.go`](../../utf16/internal/encode/encode_simd_amd64.go): runtime dispatch;
+- [`encode_simd_avx2.go`](../../utf16/internal/encode/encode_simd_avx2.go): AVX2 planner and encoders;
+- [`encode_simd_avx512.go`](../../utf16/internal/encode/encode_simd_avx512.go): AVX-512 planner and encoder;
+- [`encode_fallback.go`](../../utf16/internal/encode/encode_fallback.go): standard-library fallback.

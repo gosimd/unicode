@@ -5,10 +5,21 @@ package utf16
 import (
 	"testing"
 	stdutf16 "unicode/utf16"
+
+	internaldecode "github.com/gosimd/unicode/utf16/internal/decode"
+	internalencode "github.com/gosimd/unicode/utf16/internal/encode"
 )
 
 var benchRunesSink []rune
 var benchCodeUnitsSink []uint16
+
+const (
+	surrogateHighStart = 0xD800
+	surrogateLowStart  = 0xDC00
+	surrogateEnd       = 0xE000
+	replacementRune    = '\uFFFD'
+	surrogateOffset    = 0x10000
+)
 
 // BenchmarkReport supplies the stable, publication-oriented UTF-16 matrix
 // consumed by cmd/benchreport. Full benchmarks call the public allocating API;
@@ -59,12 +70,14 @@ func benchmarkReportEncodeFull(b *testing.B, name string, data []rune) {
 
 func benchmarkReportEncodeCore(b *testing.B, name string, data []rune) {
 	b.Run(name, func(b *testing.B) {
+		if !internalencode.AvailableForBenchmark() {
+			b.Skip("SIMD encoder is unavailable")
+		}
 		out := make([]uint16, 2*len(data))
 		b.Run("gosimd", func(b *testing.B) {
 			reportUTF16Metrics(b, len(data)*4, len(data))
 			for b.Loop() {
-				plan := planEncodeSIMD(data)
-				benchCodeUnitsSink = encodeSIMDWithPlan(data, out, plan)
+				benchCodeUnitsSink = internalencode.EncodeCoreForBenchmark(data, out)
 			}
 			reportUTF16SizeMetrics(b, len(data)*4, len(data))
 		})
@@ -102,11 +115,14 @@ func benchmarkReportDecodeFull(b *testing.B, name string, data []uint16) {
 func benchmarkReportDecodeCore(b *testing.B, name string, data []uint16) {
 	chars := len(stdutf16.Decode(data))
 	b.Run(name, func(b *testing.B) {
+		if !internaldecode.AvailableForBenchmark() {
+			b.Skip("SIMD decoder is unavailable")
+		}
 		out := make([]rune, len(data))
 		b.Run("gosimd", func(b *testing.B) {
 			reportUTF16Metrics(b, len(data)*2, chars)
 			for b.Loop() {
-				benchRunesSink = decodeSIMD(data, out)
+				benchRunesSink = internaldecode.DecodeCoreForBenchmark(data, out)
 			}
 			reportUTF16SizeMetrics(b, len(data)*2, chars)
 		})
@@ -224,10 +240,13 @@ func BenchmarkDecode(b *testing.B) {
 				}
 			})
 			b.Run("simd_core", func(b *testing.B) {
+				if !internaldecode.AvailableForBenchmark() {
+					b.Skip("SIMD decoder is unavailable")
+				}
 				out := make([]rune, len(input.data))
 				b.SetBytes(int64(len(input.data) * 2))
 				for b.Loop() {
-					benchRunesSink = decodeSIMD(input.data, out)
+					benchRunesSink = internaldecode.DecodeCoreForBenchmark(input.data, out)
 				}
 			})
 		})
@@ -270,10 +289,12 @@ func BenchmarkEncode(b *testing.B) {
 				}
 			})
 			b.Run("simd_core", func(b *testing.B) {
+				if !internalencode.AvailableForBenchmark() {
+					b.Skip("SIMD encoder is unavailable")
+				}
 				b.SetBytes(int64(len(input.data) * 4))
 				for b.Loop() {
-					plan := planEncodeSIMD(input.data)
-					benchCodeUnitsSink = encodeSIMDWithPlan(input.data, out, plan)
+					benchCodeUnitsSink = internalencode.EncodeCoreForBenchmark(input.data, out)
 				}
 			})
 		})

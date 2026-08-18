@@ -5,7 +5,11 @@
 // operations delegate to the standard library.
 package utf16
 
-import stdutf16 "unicode/utf16"
+import (
+	internaldecode "github.com/gosimd/unicode/utf16/internal/decode"
+	internalencode "github.com/gosimd/unicode/utf16/internal/encode"
+	stdutf16 "unicode/utf16"
+)
 
 // IsSurrogate reports whether r can appear in a UTF-16 surrogate pair.
 func IsSurrogate(r rune) bool {
@@ -32,7 +36,7 @@ func RuneLen(r rune) int {
 
 // Encode returns the UTF-16 encoding of s.
 func Encode(s []rune) []uint16 {
-	return encode(s)
+	return internalencode.Encode(s)
 }
 
 // AppendRune appends the UTF-16 encoding of r to a and returns the result.
@@ -42,5 +46,5 @@ func AppendRune(a []uint16, r rune) []uint16 {
 
 // Decode returns the rune sequence represented by the UTF-16 code units s.
 func Decode(s []uint16) []rune {
-	return decode(s)
+	return internaldecode.Decode(s)
 }

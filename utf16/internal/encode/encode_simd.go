@@ -1,6 +1,6 @@
 //go:build goexperiment.simd && (amd64 || arm64)
 
-package utf16
+package encode
 
 // encodingPlan is computed during the mandatory length pass. mode is
 // architecture-specific and is intentionally kept internal.
@@ -8,6 +8,15 @@ type encodingPlan struct {
 	capacity int
 	mode     uint8
 }
+
+const (
+	surrogateHighStart = 0xD800
+	surrogateLowStart  = 0xDC00
+	surrogateEnd       = 0xE000
+	surrogateMask      = 0xF800
+	replacementRune    = '\uFFFD'
+	surrogateOffset    = 0x10000
+)
 
 func encodeScalar(s []rune, out []uint16, i, n, end int) (int, int) {
 	for i < end {

@@ -1,6 +1,6 @@
 //go:build goexperiment.simd && (amd64 || arm64)
 
-package utf16
+package decode
 
 import (
 	"runtime"
@@ -18,7 +18,8 @@ const (
 	surrogateOffset     = 0x10000
 )
 
-func decode(s []uint16) []rune {
+// Decode returns the rune sequence represented by s.
+func Decode(s []uint16) []rune {
 	if runtime.GOARCH == "amd64" && !archsimd.X86.AVX2() {
 		return stdutf16.Decode(s)
 	}

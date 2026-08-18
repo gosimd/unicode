@@ -1,6 +1,6 @@
 //go:build goexperiment.simd && arm64
 
-package utf16
+package decode
 
 import (
 	"simd/archsimd"

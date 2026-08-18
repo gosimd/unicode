@@ -1,6 +1,6 @@
 //go:build goexperiment.simd && arm64
 
-package utf16
+package encode
 
 import (
 	"simd/archsimd"
@@ -9,10 +9,10 @@ import (
 
 const encodeSIMDChunkSize = 4
 
-// encode uses NEON for eight-rune blocks that are all valid BMP code points
+// Encode uses NEON for eight-rune blocks that are all valid BMP code points
 // outside the surrogate range. All other blocks use the scalar encoder, so
 // the result and capacity match unicode/utf16.Encode for malformed runes too.
-func encode(s []rune) []uint16 {
+func Encode(s []rune) []uint16 {
 	plan := planEncodeSIMD(s)
 	out := make([]uint16, plan.capacity)
 	return encodeSIMDWithPlan(s, out, plan)

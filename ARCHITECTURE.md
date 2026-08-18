@@ -14,6 +14,11 @@ arm64 with NEON or amd64 with AVX2 when `GOEXPERIMENT=simd` is enabled.
 `Encode` additionally selects a SIMD path for clean BMP blocks on arm64 and
 AVX2-equipped amd64. Its other functions are standard-library facades.
 
+Its public API stays in `utf16/`; whole-buffer implementations are separated
+by operation in `utf16/internal/encode` and `utf16/internal/decode`. Each
+internal package contains its own runtime dispatch, ISA-specific paths, and
+fallback, so the public package does not expose implementation details.
+
 ## Validation dispatch
 
 ```text

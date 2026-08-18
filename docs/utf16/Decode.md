@@ -127,14 +127,15 @@ unit streams. AMD64 tests additionally exercise the direct AVX2 decoder,
 every possible position of one valid pair, dense pairs, and surrogate mask
 extraction.
 
-The implementation is split across:
+The public wrapper is [`utf16.go`](../../utf16/utf16.go); the implementation
+lives in `utf16/internal/decode`:
 
-- [`decode_simd.go`](../../utf16/decode_simd.go): dispatch guard, constants,
-  allocation, and shared scalar state machine;
-- [`decode_simd_arm64.go`](../../utf16/decode_simd_arm64.go): NEON decoder;
-- [`decode_simd_amd64.go`](../../utf16/decode_simd_amd64.go): runtime dispatch;
-- [`decode_simd_avx2.go`](../../utf16/decode_simd_avx2.go): AVX2 clean,
+- [`decode_simd.go`](../../utf16/internal/decode/decode_simd.go): dispatch
+  guard, constants, allocation, and shared scalar state machine;
+- [`decode_simd_arm64.go`](../../utf16/internal/decode/decode_simd_arm64.go): NEON decoder;
+- [`decode_simd_amd64.go`](../../utf16/internal/decode/decode_simd_amd64.go): runtime dispatch;
+- [`decode_simd_avx2.go`](../../utf16/internal/decode/decode_simd_avx2.go): AVX2 clean,
   sparse-pair, and dense-pair paths;
-- [`decode_simd_avx512.go`](../../utf16/decode_simd_avx512.go): AVX-512 clean
+- [`decode_simd_avx512.go`](../../utf16/internal/decode/decode_simd_avx512.go): AVX-512 clean
   widening path;
-- [`decode_fallback.go`](../../utf16/decode_fallback.go): standard-library fallback.
+- [`decode_fallback.go`](../../utf16/internal/decode/decode_fallback.go): standard-library fallback.

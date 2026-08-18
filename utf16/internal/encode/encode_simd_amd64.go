@@ -1,15 +1,15 @@
 //go:build goexperiment.simd && amd64
 
-package utf16
+package encode
 
 import (
 	"simd/archsimd"
 	stdutf16 "unicode/utf16"
 )
 
-// encode selects AVX-512 when available, then AVX2. All other hosts use the
+// Encode selects AVX-512 when available, then AVX2. All other hosts use the
 // standard library implementation.
-func encode(s []rune) []uint16 {
+func Encode(s []rune) []uint16 {
 	if !archsimd.X86.AVX2() {
 		return stdutf16.Encode(s)
 	}

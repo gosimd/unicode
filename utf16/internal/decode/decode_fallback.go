@@ -1,9 +1,10 @@
 //go:build !goexperiment.simd || (!amd64 && !arm64)
 
-package utf16
+package decode
 
 import stdutf16 "unicode/utf16"
 
-func decode(s []uint16) []rune {
+// Decode returns the rune sequence represented by s.
+func Decode(s []uint16) []rune {
 	return stdutf16.Decode(s)
 }

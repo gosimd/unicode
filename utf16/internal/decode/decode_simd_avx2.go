@@ -1,6 +1,6 @@
 //go:build goexperiment.simd && amd64
 
-package utf16
+package decode
 
 import (
 	"math/bits"
