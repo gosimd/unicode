@@ -8,6 +8,8 @@ import (
 	stdutf8 "unicode/utf8"
 
 	simdutf8 "github.com/gosimd/unicode/utf8"
+	internaldecode "github.com/gosimd/unicode/utf8/internal/decode"
+	internalencode "github.com/gosimd/unicode/utf8/internal/encode"
 )
 
 var (
@@ -116,7 +118,7 @@ func BenchmarkEncode(b *testing.B) {
 	for _, input := range utf8BenchStringInputs() {
 		runes := []rune(input.data)
 		encodedBytes := len(simdutf8.Encode(runes))
-		simdPlan, simdEncodedBytes, simdAvailable := simdutf8.NewEncodeSIMDBenchmarkPlan(runes)
+		simdPlan, simdEncodedBytes, simdAvailable := internalencode.NewEncodeSIMDBenchmarkPlan(runes)
 		b.Run(input.name, func(b *testing.B) {
 			b.Run("stdlib_full", func(b *testing.B) {
 				b.ReportAllocs()
@@ -148,7 +150,7 @@ func BenchmarkEncode(b *testing.B) {
 				b.ReportAllocs()
 				b.SetBytes(int64(simdEncodedBytes))
 				for b.Loop() {
-					benchByteSink = simdutf8.EncodeSIMDCoreForBenchmark(runes, out, simdPlan)
+					benchByteSink = internalencode.EncodeSIMDCoreForBenchmark(runes, out, simdPlan)
 				}
 			})
 		})
@@ -183,7 +185,7 @@ func BenchmarkDecode(b *testing.B) {
 				}
 			})
 
-			plan, decodedRunes, simdAvailable := simdutf8.NewDecodeSIMDBenchmarkPlan(input.data)
+			plan, decodedRunes, simdAvailable := internaldecode.NewDecodeSIMDBenchmarkPlan(input.data)
 			b.Run("simd_core", func(b *testing.B) {
 				if !simdAvailable {
 					b.Skip("SIMD decoder is unavailable for this input")
@@ -192,7 +194,7 @@ func BenchmarkDecode(b *testing.B) {
 				b.ReportAllocs()
 				b.SetBytes(int64(len(input.data)))
 				for b.Loop() {
-					benchRuneSliceSink = simdutf8.DecodeSIMDCoreForBenchmark(input.data, out, plan)
+					benchRuneSliceSink = internaldecode.DecodeSIMDCoreForBenchmark(input.data, out, plan)
 				}
 			})
 		})
@@ -233,9 +235,9 @@ func TestCoreConversionsMatchPublicAPI(t *testing.T) {
 				t.Fatalf("decodeCore = %U, want %U", decoded, want)
 			}
 
-			plan, decodedRunes, simdAvailable := simdutf8.NewDecodeSIMDBenchmarkPlan(input.data)
+			plan, decodedRunes, simdAvailable := internaldecode.NewDecodeSIMDBenchmarkPlan(input.data)
 			if simdAvailable {
-				simdDecoded := simdutf8.DecodeSIMDCoreForBenchmark(
+				simdDecoded := internaldecode.DecodeSIMDCoreForBenchmark(
 					input.data,
 					make([]rune, decodedRunes),
 					plan,
@@ -411,14 +413,14 @@ func benchmarkReportUTF8EncodeFull(b *testing.B, name string, runes []rune) {
 func benchmarkReportUTF8EncodeCore(b *testing.B, name string, runes []rune) {
 	inputBytes, chars := len(runes)*4, len(runes)
 	encodedBytes := len(string(runes))
-	plan, simdEncodedBytes, simdAvailable := simdutf8.NewEncodeSIMDBenchmarkPlan(runes)
+	plan, simdEncodedBytes, simdAvailable := internalencode.NewEncodeSIMDBenchmarkPlan(runes)
 	b.Run(name, func(b *testing.B) {
 		b.Run("gosimd", func(b *testing.B) {
 			if simdAvailable {
 				out := make([]byte, simdEncodedBytes+15)
 				reportUTF8MetricsForBytes(b, inputBytes)
 				for b.Loop() {
-					benchByteSink = simdutf8.EncodeSIMDCoreForBenchmark(runes, out, plan)
+					benchByteSink = internalencode.EncodeSIMDCoreForBenchmark(runes, out, plan)
 				}
 				reportUTF8SizeMetricsForCounts(b, inputBytes, chars)
 				return
@@ -466,14 +468,14 @@ func benchmarkReportUTF8DecodeFull(b *testing.B, name, text string) {
 
 func benchmarkReportUTF8DecodeCore(b *testing.B, name, text string) {
 	inputBytes, chars := len(text), len([]rune(text))
-	plan, decodedRunes, simdAvailable := simdutf8.NewDecodeSIMDBenchmarkPlan(text)
+	plan, decodedRunes, simdAvailable := internaldecode.NewDecodeSIMDBenchmarkPlan(text)
 	b.Run(name, func(b *testing.B) {
 		b.Run("gosimd", func(b *testing.B) {
 			if simdAvailable {
 				out := make([]rune, decodedRunes)
 				reportUTF8MetricsForBytes(b, inputBytes)
 				for b.Loop() {
-					benchRuneSliceSink = simdutf8.DecodeSIMDCoreForBenchmark(text, out, plan)
+					benchRuneSliceSink = internaldecode.DecodeSIMDCoreForBenchmark(text, out, plan)
 				}
 				reportUTF8SizeMetricsForCounts(b, inputBytes, chars)
 				return

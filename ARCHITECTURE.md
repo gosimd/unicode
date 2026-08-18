@@ -34,32 +34,28 @@ Every implementation must return the same result as its corresponding
 views when the SIMD implementation is available. Both supported and fallback
 paths do not allocate.
 
-## SIMD implementation layout
+## UTF-8 implementation layout
 
-| File group | Responsibility |
+The public package is intentionally small. Operation-specific implementations
+live below `utf8/internal`, while architecture suffixes and build tags keep the
+NEON, AVX2, AVX-512, and fallback paths isolated inside each operation.
+
+| Path | Responsibility |
 | --- | --- |
-| `valid_simd.go` | SIMD `Valid` and `ValidString` entry points. |
-| `rune_count_simd.go` | SIMD `RuneCount`, `RuneCountInString`, and shared 128-bit counting loop. |
-| `rune_count_simd_avx2.go` | AVX2 lookup validator and fused continuation-byte sum. |
-| `rune_count_simd_avx512.go` | AVX-512 lookup validator and fused continuation-byte sum. |
-| `continuation_count_*.go` | Architecture-specific continuation-mask reduction for rune counting. |
-| `utf8_simd_common.go` | Shared chunk sizes, byte classification, scalar tail state, and masks. |
-| `valid_predicates_arm64.go` | NEON fused validation predicate and incomplete-sequence carry. |
-| `ascii_arm64.go` | NEON ASCII detector using a signed minimum. |
-| `valid_predicates_amd64.go` | 128-bit amd64 baseline predicate and incomplete-sequence carry. |
-| `valid_simd_avx2.go` | Native 256-bit AVX2 validator, grouped carry, and wide ASCII fast path. |
-| `valid_simd_avx512.go` | AVX-512 per-512-byte ASCII shortcut and lookup-based native wide validator. |
-| `ascii_amd64.go` | amd64 ASCII detector. |
-| `lookup_*`, `zero_*` | Architecture-specific table lookup and zero reduction helpers. |
-| `encode_simd_arm64.go` | NEON UTF-8 length planning, ASCII packing, and variable-width encoding. |
-| `encode_simd_amd64.go` | Public UTF-8 Encode entry and AVX2/AVX-512 runtime dispatch. |
-| `encode_simd_avx2.go` | Correctness-first AVX2 baseline with eight-rune ASCII packing. |
-| `encode_simd_avx512.go` | AVX-512 length planning, dense encoders, and grouped variable-width compaction. |
-| `decode_simd_arm64.go` | NEON UTF-8 ASCII widening and table-driven masked decoding. |
-| `decode_simd_amd64.go` | Runtime dispatch between the AVX2 and AVX-512 UTF-8 decoders. |
-| `decode_simd_avx2.go` | AVX2 ASCII widening, dense decoders, and table-driven mixed decoding. |
-| `decode_simd_avx512.go` | AVX-512 ASCII widening, dense decoders, and compressed general decoding. |
-| `valid_fallback.go`, `rune_count_fallback.go`, `encode_fallback.go`, `decode_fallback.go` | Non-SIMD standard-library fallbacks. |
+| `utf8/whole_buffer.go` | Public `Valid`, `RuneCount`, `Encode`, and `Decode` wrappers. |
+| `utf8/utf8.go`, `utf8/api_compat.go` | Standard-library-compatible API and compile-time compatibility checks. |
+| `utf8/internal/scan` | Shared validation and rune-counting passes, including architecture-specific predicates, lookup tables, and fallbacks. |
+| `utf8/internal/encode` | UTF-8 length planning, encoding, runtime dispatch, and fallback. |
+| `utf8/internal/decode` | UTF-8 validation/count integration, decoding, runtime dispatch, and fallback. |
+
+Within `scan`, `valid_simd_avx2.go` and `valid_simd_avx512.go` contain the
+native wide validators, while the matching `rune_count_simd_*.go` files fuse
+validation with continuation-byte counting. Its `aux_*.go` files collect the
+small ISA-specific helpers for ASCII detection, nibble lookup, zero reduction,
+and continuation counting. Within `encode` and `decode`, the `*_arm64.go`,
+`*_avx2.go`, and `*_avx512.go` files contain the ISA-specific hot paths;
+`*_amd64.go` files perform runtime dispatch. Every operation directory also
+contains a build-tagged fallback.
 
 The ARM64 loop and the amd64 baseline work on four 16-byte vectors (64 bytes).
 The primary AVX2 `Valid` path tests 512-byte windows for ASCII and validates
