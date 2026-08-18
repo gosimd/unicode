@@ -11,54 +11,70 @@ This report records the expected performance level for this machine. Results are
 | Active SIMD backend | AVX-512 |
 | Logical CPUs | 2 |
 | Platform | `linux/amd64` |
-| Go | `go1.27rc1-X:simd` with `GOEXPERIMENT=simd` |
-| Git revision | `d2051cb48ba1+dirty` |
-| Generated (UTC) | `2026-08-17T19:15:32Z` |
+| Go | `go1.27rc3-X:simd` with `GOEXPERIMENT=simd` |
+| Git revision | `a4358d794d89+dirty` |
+| Generated (UTC) | `2026-08-18T12:00:45Z` |
 | Sampling | median of 5 samples, `-benchtime=1s` |
 
 ## Workloads
 
 Every row uses an approximately 64 KiB input working set. `ascii-only` is English ASCII; `mixed` combines English, Russian, Chinese, and emoji; `russian` and `chinese` contain only their named scripts. Repetition ends only at a valid encoding boundary.
 
-For UTF-8, throughput counts UTF-8 input bytes. For UTF-16 Encode it counts the 4-byte Go `rune` input, and for Decode it counts the 2-byte UTF-16 input, matching the package benchmarks. A character means one decoded Unicode code point. `-full` calls the public API and includes output allocation; `-core` reuses caller-owned output but includes length/planning and conversion work.
+For UTF-8 Valid, RuneCount, and Decode, throughput counts UTF-8 input bytes; UTF-8 Encode counts its 4-byte Go `rune` input. UTF-16 Encode counts the 4-byte Go `rune` input, and Decode counts the 2-byte UTF-16 input, matching the package benchmarks. A character means one decoded Unicode code point. `-full` calls the public API and includes output allocation; `-core` reuses caller-owned output. UTF-8 SIMD core rows measure only the encoder or decoder after their planning pass.
 
 ## UTF-8
 
 | API | Scenario | Input | gosimd time/char | gosimd throughput | gosimd allocation | stdlib time/char | stdlib throughput | stdlib allocation | Speedup |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| `utf8.Valid` | ascii-only | 64.03 KiB / 65565 chars | **0.020 ns** | **50.36 GB/s** | 0 B, 0 allocs | 0.044 ns | 22.76 GB/s | 0 B, 0 allocs | 2.21× (+121.3%) |
-| `utf8.Valid` | mixed | 64.01 KiB / 43125 chars | **0.184 ns** | **8.27 GB/s** | 0 B, 0 allocs | 2.102 ns | 722.95 MB/s | 0 B, 0 allocs | 11.43× (+1043.2%) |
-| `utf8.Valid` | russian | 64.00 KiB / 36410 chars | **0.226 ns** | **7.96 GB/s** | 0 B, 0 allocs | 2.865 ns | 628.26 MB/s | 0 B, 0 allocs | 12.68× (+1167.5%) |
-| `utf8.Valid` | chinese | 64.00 KiB / 21846 chars | **0.334 ns** | **8.97 GB/s** | 0 B, 0 allocs | 3.983 ns | 753.20 MB/s | 0 B, 0 allocs | 11.91× (+1090.8%) |
-| `utf8.RuneCount` | ascii-only | 64.03 KiB / 65565 chars | **0.019 ns** | **51.30 GB/s** | 0 B, 0 allocs | 0.437 ns | 2.29 GB/s | 0 B, 0 allocs | 22.42× (+2142.4%) |
-| `utf8.RuneCount` | mixed | 64.01 KiB / 43125 chars | **0.211 ns** | **7.20 GB/s** | 0 B, 0 allocs | 4.774 ns | 318.41 MB/s | 72.00 KiB, 1 allocs | 22.62× (+2162.3%) |
-| `utf8.RuneCount` | russian | 64.00 KiB / 36410 chars | **0.235 ns** | **7.67 GB/s** | 0 B, 0 allocs | 7.020 ns | 256.40 MB/s | 72.00 KiB, 1 allocs | 29.90× (+2890.3%) |
-| `utf8.RuneCount` | chinese | 64.00 KiB / 21846 chars | **0.383 ns** | **7.83 GB/s** | 0 B, 0 allocs | 11.618 ns | 258.23 MB/s | 72.00 KiB, 1 allocs | 30.33× (+2932.6%) |
+| `utf8.Valid` | ascii-only | 64.03 KiB / 65565 chars | **0.021 ns** | **48.32 GB/s** | 0 B, 0 allocs | 0.046 ns | 21.95 GB/s | 0 B, 0 allocs | 2.20× (+120.1%) |
+| `utf8.Valid` | mixed | 64.01 KiB / 43125 chars | **0.198 ns** | **7.67 GB/s** | 0 B, 0 allocs | 2.175 ns | 698.75 MB/s | 0 B, 0 allocs | 10.97× (+997.1%) |
+| `utf8.Valid` | russian | 64.00 KiB / 36410 chars | **0.236 ns** | **7.64 GB/s** | 0 B, 0 allocs | 3.328 ns | 540.84 MB/s | 0 B, 0 allocs | 14.13× (+1312.7%) |
+| `utf8.Valid` | chinese | 64.00 KiB / 21846 chars | **0.372 ns** | **8.07 GB/s** | 0 B, 0 allocs | 4.345 ns | 690.38 MB/s | 0 B, 0 allocs | 11.68× (+1068.2%) |
+| `utf8.RuneCount` | ascii-only | 64.03 KiB / 65565 chars | **0.021 ns** | **48.28 GB/s** | 0 B, 0 allocs | 0.897 ns | 1.11 GB/s | 0 B, 0 allocs | 43.31× (+4230.7%) |
+| `utf8.RuneCount` | mixed | 64.01 KiB / 43125 chars | **0.219 ns** | **6.94 GB/s** | 0 B, 0 allocs | 3.741 ns | 406.29 MB/s | 72.00 KiB, 1 allocs | 17.07× (+1607.3%) |
+| `utf8.RuneCount` | russian | 64.00 KiB / 36410 chars | **0.282 ns** | **6.39 GB/s** | 0 B, 0 allocs | 5.256 ns | 342.50 MB/s | 72.00 KiB, 1 allocs | 18.66× (+1765.6%) |
+| `utf8.RuneCount` | chinese | 64.00 KiB / 21846 chars | **0.458 ns** | **6.55 GB/s** | 0 B, 0 allocs | 8.114 ns | 369.74 MB/s | 72.00 KiB, 1 allocs | 17.72× (+1672.4%) |
+| `utf8.Encode-full` | ascii-only | 64.00 KiB / 16384 chars | **0.638 ns** | **6.27 GB/s** | 18.00 KiB, 1 allocs | 9.562 ns | 418.31 MB/s | 18.00 KiB, 1 allocs | 15.00× (+1399.5%) |
+| `utf8.Encode-full` | mixed | 64.00 KiB / 16384 chars | **3.291 ns** | **1.22 GB/s** | 26.62 KiB, 1 allocs | 10.963 ns | 364.88 MB/s | 26.62 KiB, 1 allocs | 3.33× (+233.1%) |
+| `utf8.Encode-full` | russian | 64.00 KiB / 16384 chars | **3.691 ns** | **1.08 GB/s** | 32.00 KiB, 1 allocs | 11.704 ns | 341.77 MB/s | 32.00 KiB, 1 allocs | 3.17× (+217.1%) |
+| `utf8.Encode-full` | chinese | 64.00 KiB / 16384 chars | **3.168 ns** | **1.26 GB/s** | 56.00 KiB, 1 allocs | 15.694 ns | 254.87 MB/s | 56.00 KiB, 1 allocs | 4.95× (+395.4%) |
+| `utf8.Encode-core` | ascii-only | 64.00 KiB / 16384 chars | **0.111 ns** | **36.13 GB/s** | 0 B, 0 allocs | 1.669 ns | 2.40 GB/s | 0 B, 0 allocs | 15.08× (+1407.6%) |
+| `utf8.Encode-core` | mixed | 64.00 KiB / 16384 chars | **1.702 ns** | **2.35 GB/s** | 0 B, 0 allocs | 3.513 ns | 1.14 GB/s | 0 B, 0 allocs | 2.06× (+106.4%) |
+| `utf8.Encode-core` | russian | 64.00 KiB / 16384 chars | **1.740 ns** | **2.30 GB/s** | 0 B, 0 allocs | 5.352 ns | 747.33 MB/s | 0 B, 0 allocs | 3.08× (+207.7%) |
+| `utf8.Encode-core` | chinese | 64.00 KiB / 16384 chars | **0.800 ns** | **5.00 GB/s** | 0 B, 0 allocs | 7.394 ns | 540.96 MB/s | 0 B, 0 allocs | 9.24× (+824.4%) |
+| `utf8.Decode-full` | ascii-only | 64.03 KiB / 65565 chars | **1.149 ns** | **870.64 MB/s** | 264.00 KiB, 1 allocs | 3.508 ns | 285.09 MB/s | 264.00 KiB, 1 allocs | 3.05× (+205.4%) |
+| `utf8.Decode-full` | mixed | 64.01 KiB / 43125 chars | **2.764 ns** | **549.89 MB/s** | 176.00 KiB, 1 allocs | 7.935 ns | 191.57 MB/s | 176.00 KiB, 1 allocs | 2.87× (+187.1%) |
+| `utf8.Decode-full` | russian | 64.00 KiB / 36410 chars | **3.432 ns** | **524.55 MB/s** | 144.00 KiB, 1 allocs | 10.582 ns | 170.10 MB/s | 144.00 KiB, 1 allocs | 3.08× (+208.4%) |
+| `utf8.Decode-full` | chinese | 64.00 KiB / 21846 chars | **2.590 ns** | **1.16 GB/s** | 88.00 KiB, 1 allocs | 16.381 ns | 183.14 MB/s | 88.00 KiB, 1 allocs | 6.32× (+532.5%) |
+| `utf8.Decode-core` | ascii-only | 64.03 KiB / 65565 chars | **0.140 ns** | **7.13 GB/s** | 0 B, 0 allocs | 2.454 ns | 407.48 MB/s | 0 B, 0 allocs | 17.49× (+1648.9%) |
+| `utf8.Decode-core` | mixed | 64.01 KiB / 43125 chars | **1.159 ns** | **1.31 GB/s** | 0 B, 0 allocs | 4.643 ns | 327.37 MB/s | 0 B, 0 allocs | 4.01× (+300.7%) |
+| `utf8.Decode-core` | russian | 64.00 KiB / 36410 chars | **1.362 ns** | **1.32 GB/s** | 0 B, 0 allocs | 7.289 ns | 246.96 MB/s | 0 B, 0 allocs | 5.35× (+435.0%) |
+| `utf8.Decode-core` | chinese | 64.00 KiB / 21846 chars | **0.576 ns** | **5.21 GB/s** | 0 B, 0 allocs | 8.200 ns | 365.87 MB/s | 0 B, 0 allocs | 14.23× (+1323.5%) |
 
 ## UTF-16
 
 | API | Scenario | Input | gosimd time/char | gosimd throughput | gosimd allocation | stdlib time/char | stdlib throughput | stdlib allocation | Speedup |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| `utf16.Encode-full` | ascii-only | 64.00 KiB / 16384 chars | **1.302 ns** | **3.07 GB/s** | 32.00 KiB, 1 allocs | 5.880 ns | 680.22 MB/s | 32.00 KiB, 1 allocs | 4.52× (+351.7%) |
-| `utf16.Encode-full` | mixed | 64.00 KiB / 16384 chars | **3.532 ns** | **1.13 GB/s** | 40.00 KiB, 1 allocs | 6.810 ns | 587.40 MB/s | 40.00 KiB, 1 allocs | 1.93× (+92.8%) |
-| `utf16.Encode-full` | russian | 64.00 KiB / 16384 chars | **1.422 ns** | **2.81 GB/s** | 32.00 KiB, 1 allocs | 5.458 ns | 732.87 MB/s | 32.00 KiB, 1 allocs | 3.84× (+283.8%) |
-| `utf16.Encode-full` | chinese | 64.00 KiB / 16384 chars | **1.105 ns** | **3.62 GB/s** | 32.00 KiB, 1 allocs | 5.228 ns | 765.17 MB/s | 32.00 KiB, 1 allocs | 4.73× (+373.1%) |
-| `utf16.Encode-core` | ascii-only | 64.00 KiB / 16384 chars | **0.338 ns** | **11.83 GB/s** | 0 B, 0 allocs | 3.512 ns | 1.14 GB/s | 0 B, 0 allocs | 10.39× (+938.6%) |
-| `utf16.Encode-core` | mixed | 64.00 KiB / 16384 chars | **1.614 ns** | **2.48 GB/s** | 0 B, 0 allocs | 3.513 ns | 1.14 GB/s | 0 B, 0 allocs | 2.18× (+117.6%) |
-| `utf16.Encode-core` | russian | 64.00 KiB / 16384 chars | **0.344 ns** | **11.62 GB/s** | 0 B, 0 allocs | 3.285 ns | 1.22 GB/s | 0 B, 0 allocs | 9.54× (+854.1%) |
-| `utf16.Encode-core` | chinese | 64.00 KiB / 16384 chars | **0.355 ns** | **11.26 GB/s** | 0 B, 0 allocs | 3.494 ns | 1.14 GB/s | 0 B, 0 allocs | 9.83× (+883.4%) |
-| `utf16.Decode-full` | ascii-only | 64.07 KiB / 32805 chars | **1.661 ns** | **1.20 GB/s** | 136.00 KiB, 1 allocs | 11.908 ns | 167.95 MB/s | 657.62 KiB, 17 allocs | 7.17× (+616.9%) |
-| `utf16.Decode-full` | mixed | 64.04 KiB / 31525 chars | **3.606 ns** | **576.75 MB/s** | 136.00 KiB, 1 allocs | 9.712 ns | 214.18 MB/s | 489.62 KiB, 16 allocs | 2.69× (+169.3%) |
-| `utf16.Decode-full` | russian | 64.02 KiB / 32780 chars | **1.744 ns** | **1.15 GB/s** | 136.00 KiB, 1 allocs | 14.024 ns | 142.61 MB/s | 657.62 KiB, 17 allocs | 8.04× (+703.9%) |
-| `utf16.Decode-full` | chinese | 64.02 KiB / 32780 chars | **1.517 ns** | **1.32 GB/s** | 136.00 KiB, 1 allocs | 12.639 ns | 158.24 MB/s | 657.62 KiB, 17 allocs | 8.33× (+732.9%) |
-| `utf16.Decode-core` | ascii-only | 64.07 KiB / 32805 chars | **0.140 ns** | **14.33 GB/s** | 0 B, 0 allocs | 1.413 ns | 1.42 GB/s | 0 B, 0 allocs | 10.12× (+912.3%) |
-| `utf16.Decode-core` | mixed | 64.04 KiB / 31525 chars | **1.498 ns** | **1.39 GB/s** | 0 B, 0 allocs | 1.619 ns | 1.28 GB/s | 0 B, 0 allocs | 1.08× (+8.1%) |
-| `utf16.Decode-core` | russian | 64.02 KiB / 32780 chars | **0.140 ns** | **14.25 GB/s** | 0 B, 0 allocs | 1.418 ns | 1.41 GB/s | 0 B, 0 allocs | 10.10× (+910.4%) |
-| `utf16.Decode-core` | chinese | 64.02 KiB / 32780 chars | **0.141 ns** | **14.22 GB/s** | 0 B, 0 allocs | 2.049 ns | 976.02 MB/s | 0 B, 0 allocs | 14.57× (+1357.1%) |
+| `utf16.Encode-full` | ascii-only | 64.00 KiB / 16384 chars | **1.271 ns** | **3.15 GB/s** | 32.00 KiB, 1 allocs | 5.190 ns | 770.77 MB/s | 32.00 KiB, 1 allocs | 4.08× (+308.4%) |
+| `utf16.Encode-full` | mixed | 64.00 KiB / 16384 chars | **2.909 ns** | **1.37 GB/s** | 40.00 KiB, 1 allocs | 5.535 ns | 722.64 MB/s | 40.00 KiB, 1 allocs | 1.90× (+90.3%) |
+| `utf16.Encode-full` | russian | 64.00 KiB / 16384 chars | **1.475 ns** | **2.71 GB/s** | 32.00 KiB, 1 allocs | 5.663 ns | 706.33 MB/s | 32.00 KiB, 1 allocs | 3.84× (+283.9%) |
+| `utf16.Encode-full` | chinese | 64.00 KiB / 16384 chars | **1.461 ns** | **2.74 GB/s** | 32.00 KiB, 1 allocs | 5.816 ns | 687.79 MB/s | 32.00 KiB, 1 allocs | 3.98× (+298.1%) |
+| `utf16.Encode-core` | ascii-only | 64.00 KiB / 16384 chars | **0.370 ns** | **10.80 GB/s** | 0 B, 0 allocs | 3.285 ns | 1.22 GB/s | 0 B, 0 allocs | 8.87× (+786.9%) |
+| `utf16.Encode-core` | mixed | 64.00 KiB / 16384 chars | **1.628 ns** | **2.46 GB/s** | 0 B, 0 allocs | 3.262 ns | 1.23 GB/s | 0 B, 0 allocs | 2.00× (+100.4%) |
+| `utf16.Encode-core` | russian | 64.00 KiB / 16384 chars | **0.417 ns** | **9.59 GB/s** | 0 B, 0 allocs | 3.333 ns | 1.20 GB/s | 0 B, 0 allocs | 7.99× (+699.3%) |
+| `utf16.Encode-core` | chinese | 64.00 KiB / 16384 chars | **0.405 ns** | **9.87 GB/s** | 0 B, 0 allocs | 3.120 ns | 1.28 GB/s | 0 B, 0 allocs | 7.70× (+669.5%) |
+| `utf16.Decode-full` | ascii-only | 64.07 KiB / 32805 chars | **2.070 ns** | **966.36 MB/s** | 136.00 KiB, 1 allocs | 12.194 ns | 164.01 MB/s | 657.62 KiB, 17 allocs | 5.89× (+489.2%) |
+| `utf16.Decode-full` | mixed | 64.04 KiB / 31525 chars | **4.048 ns** | **513.90 MB/s** | 136.00 KiB, 1 allocs | 11.325 ns | 183.67 MB/s | 489.62 KiB, 16 allocs | 2.80× (+179.8%) |
+| `utf16.Decode-full` | russian | 64.02 KiB / 32780 chars | **2.298 ns** | **870.18 MB/s** | 136.00 KiB, 1 allocs | 17.013 ns | 117.56 MB/s | 657.62 KiB, 17 allocs | 7.40× (+640.2%) |
+| `utf16.Decode-full` | chinese | 64.02 KiB / 32780 chars | **2.368 ns** | **844.74 MB/s** | 136.00 KiB, 1 allocs | 18.139 ns | 110.26 MB/s | 657.62 KiB, 17 allocs | 7.66× (+666.1%) |
+| `utf16.Decode-core` | ascii-only | 64.07 KiB / 32805 chars | **0.161 ns** | **12.44 GB/s** | 0 B, 0 allocs | 2.074 ns | 964.16 MB/s | 0 B, 0 allocs | 12.91× (+1190.5%) |
+| `utf16.Decode-core` | mixed | 64.04 KiB / 31525 chars | **1.736 ns** | **1.20 GB/s** | 0 B, 0 allocs | 2.311 ns | 899.89 MB/s | 0 B, 0 allocs | 1.33× (+33.2%) |
+| `utf16.Decode-core` | russian | 64.02 KiB / 32780 chars | **0.154 ns** | **12.99 GB/s** | 0 B, 0 allocs | 2.056 ns | 972.61 MB/s | 0 B, 0 allocs | 13.35× (+1235.3%) |
+| `utf16.Decode-core` | chinese | 64.02 KiB / 32780 chars | **0.158 ns** | **12.66 GB/s** | 0 B, 0 allocs | 2.458 ns | 813.55 MB/s | 0 B, 0 allocs | 15.56× (+1456.3%) |
 
 ## Reproduce
 
 ```text
-GOEXPERIMENT=simd /root/.local/go1.27rc1/bin/go test -run=^$ -bench=^BenchmarkReport$ -benchmem -benchtime=1s -count=5 ./utf8
-GOEXPERIMENT=simd /root/.local/go1.27rc1/bin/go test -run=^$ -bench=^BenchmarkReport$ -benchmem -benchtime=1s -count=5 ./utf16
+GOEXPERIMENT=simd /root/.local/go1.27rc3/bin/go test -run=^$ -bench=^BenchmarkReport$ -benchmem -benchtime=1s -count=5 ./utf8
+GOEXPERIMENT=simd /root/.local/go1.27rc3/bin/go test -run=^$ -bench=^BenchmarkReport$ -benchmem -benchtime=1s -count=5 ./utf16
 ```
