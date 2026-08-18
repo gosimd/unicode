@@ -10,6 +10,8 @@ The report contains these operations:
 
 - `utf8.Valid`
 - `utf8.RuneCount`
+- `utf8.Encode-full` and `utf8.Encode-core`
+- `utf8.Decode-full` and `utf8.Decode-core`
 - `utf16.Encode-full` and `utf16.Encode-core`
 - `utf16.Decode-full` and `utf16.Decode-core`
 
@@ -18,17 +20,21 @@ Each operation uses four approximately 64 KiB inputs: `ascii-only`, `mixed`,
 emoji so UTF-16 measurements also exercise surrogate handling.
 
 Time is normalized by decoded Unicode code points. Throughput follows the
-existing Go benchmarks: UTF-8 input bytes for UTF-8 operations, 4-byte Go
-`rune` input for UTF-16 Encode, and 2-byte UTF-16 input for Decode. Consequently
-throughput values from different operations are not interchangeable.
+existing Go benchmarks: UTF-8 input bytes for UTF-8 validation, counting, and
+decoding; 4-byte Go `rune` input for UTF-8 and UTF-16 Encode; and 2-byte UTF-16
+input for Decode. Consequently throughput values from different operations are
+not interchangeable.
 
 `-full` calls the public function and includes output allocation. `-core`
-reuses a caller-owned output buffer while still measuring the length/planning
-pass and conversion. The generator rejects a core result if either gosimd or
-stdlib reports a timed allocation. Since `unicode/utf16` has no caller-output
-API, its core columns use benchmark-local copies of the Go 1.27rc1 Encode and
-Decode loops; those columns are a fair algorithm comparison, not a public
-stdlib API call.
+reuses a caller-owned output buffer. The UTF-8 SIMD core columns isolate the
+NEON encoder or decoder after their planning pass; the equivalent stdlib core
+columns use caller-owned versions of the scalar conversion loops. The generator
+rejects a core result if either gosimd or stdlib reports a timed allocation.
+On platforms without the ARM64 UTF-8 conversion backend, the gosimd core row
+uses the same scalar caller-buffer loop as the stdlib core row. Since
+`unicode/utf16` has no caller-output API, its core columns use
+benchmark-local copies of the Go 1.27rc1 Encode and Decode loops; those columns
+are a fair algorithm comparison, not a public stdlib API call.
 
 ## Generate a report
 

@@ -105,10 +105,10 @@ make profile-mem
 `make bench-report` measures the stable UTF-8 and UTF-16 publication matrix on
 the local machine and writes a commit-ready Markdown file under `bench/`. The
 matrix covers ASCII-only, mixed, Russian, and Chinese inputs for `utf8.Valid`,
-`utf8.RuneCount`, and the full/core variants of `utf16.Encode` and
-`utf16.Decode`. Every row compares gosimd with the equivalent standard-library
-implementation and reports time per character, input throughput, allocations,
-and speedup.
+`utf8.RuneCount`, the full/core variants of `utf8.Encode` and `utf8.Decode`,
+and the full/core variants of `utf16.Encode` and `utf16.Decode`. Every row
+compares gosimd with the equivalent standard-library implementation and reports
+time per character, input throughput, allocations, and speedup.
 
 The default report uses the median of five 1-second samples. It detects the CPU
 name, frequency when the operating system exposes it, and the active NEON,

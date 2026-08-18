@@ -38,7 +38,7 @@ func TestValidateCoreAllocations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	key := resultKey("utf16.Decode-core", "mixed", "gosimd")
+	key := resultKey("utf8.Decode-core", "mixed", "gosimd")
 	result := results[key]
 	result.bytesAlloc = 16
 	result.allocs = 1
@@ -75,7 +75,8 @@ func TestRenderReport(t *testing.T) {
 	for _, expected := range []string{
 		"# Unicode performance on Apple M5",
 		"| Active SIMD backend | ARM NEON |",
-		"`utf16.Decode-core`",
+		"`utf8.Encode-full`",
+		"`utf8.Decode-core`",
 		"1.20× (+20.0%)",
 		"0 B, 0 allocs",
 	} {

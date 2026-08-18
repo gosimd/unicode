@@ -325,6 +325,7 @@ func utf8DecodeBenchStringInputs() []struct {
 // above so report changes do not silently remove regular benchmark coverage.
 func BenchmarkReport(b *testing.B) {
 	inputs := utf8ReportInputs()
+	encodeInputs := utf8ReportRuneInputs()
 	b.Run("utf8.Valid", func(b *testing.B) {
 		for _, input := range inputs {
 			b.Run(input.name, func(b *testing.B) {
@@ -365,16 +366,153 @@ func BenchmarkReport(b *testing.B) {
 			})
 		}
 	})
+	b.Run("utf8.Encode-full", func(b *testing.B) {
+		for _, input := range encodeInputs {
+			benchmarkReportUTF8EncodeFull(b, input.name, input.data)
+		}
+	})
+	b.Run("utf8.Encode-core", func(b *testing.B) {
+		for _, input := range encodeInputs {
+			benchmarkReportUTF8EncodeCore(b, input.name, input.data)
+		}
+	})
+	b.Run("utf8.Decode-full", func(b *testing.B) {
+		for _, input := range inputs {
+			benchmarkReportUTF8DecodeFull(b, input.name, string(input.data))
+		}
+	})
+	b.Run("utf8.Decode-core", func(b *testing.B) {
+		for _, input := range inputs {
+			benchmarkReportUTF8DecodeCore(b, input.name, string(input.data))
+		}
+	})
+}
+
+func benchmarkReportUTF8EncodeFull(b *testing.B, name string, runes []rune) {
+	inputBytes, chars := len(runes)*4, len(runes)
+	b.Run(name, func(b *testing.B) {
+		b.Run("gosimd", func(b *testing.B) {
+			reportUTF8MetricsForBytes(b, inputBytes)
+			for b.Loop() {
+				benchStringSink = simdutf8.Encode(runes)
+			}
+			reportUTF8SizeMetricsForCounts(b, inputBytes, chars)
+		})
+		b.Run("stdlib", func(b *testing.B) {
+			reportUTF8MetricsForBytes(b, inputBytes)
+			for b.Loop() {
+				benchStringSink = string(runes)
+			}
+			reportUTF8SizeMetricsForCounts(b, inputBytes, chars)
+		})
+	})
+}
+
+func benchmarkReportUTF8EncodeCore(b *testing.B, name string, runes []rune) {
+	inputBytes, chars := len(runes)*4, len(runes)
+	encodedBytes := len(string(runes))
+	plan, simdEncodedBytes, simdAvailable := simdutf8.NewEncodeSIMDBenchmarkPlan(runes)
+	b.Run(name, func(b *testing.B) {
+		b.Run("gosimd", func(b *testing.B) {
+			if simdAvailable {
+				out := make([]byte, simdEncodedBytes+15)
+				reportUTF8MetricsForBytes(b, inputBytes)
+				for b.Loop() {
+					benchByteSink = simdutf8.EncodeSIMDCoreForBenchmark(runes, out, plan)
+				}
+				reportUTF8SizeMetricsForCounts(b, inputBytes, chars)
+				return
+			}
+
+			// amd64 and non-SIMD builds retain a scalar caller-buffer core so
+			// the portable report matrix stays complete and allocation-free.
+			out := make([]byte, 0, encodedBytes)
+			reportUTF8MetricsForBytes(b, inputBytes)
+			for b.Loop() {
+				benchByteSink = encodeCore(runes, out[:0])
+			}
+			reportUTF8SizeMetricsForCounts(b, inputBytes, chars)
+		})
+		b.Run("stdlib", func(b *testing.B) {
+			out := make([]byte, 0, encodedBytes)
+			reportUTF8MetricsForBytes(b, inputBytes)
+			for b.Loop() {
+				benchByteSink = encodeCore(runes, out[:0])
+			}
+			reportUTF8SizeMetricsForCounts(b, inputBytes, chars)
+		})
+	})
+}
+
+func benchmarkReportUTF8DecodeFull(b *testing.B, name, text string) {
+	inputBytes, chars := len(text), len([]rune(text))
+	b.Run(name, func(b *testing.B) {
+		b.Run("gosimd", func(b *testing.B) {
+			reportUTF8MetricsForBytes(b, inputBytes)
+			for b.Loop() {
+				benchRuneSliceSink = simdutf8.Decode(text)
+			}
+			reportUTF8SizeMetricsForCounts(b, inputBytes, chars)
+		})
+		b.Run("stdlib", func(b *testing.B) {
+			reportUTF8MetricsForBytes(b, inputBytes)
+			for b.Loop() {
+				benchRuneSliceSink = []rune(text)
+			}
+			reportUTF8SizeMetricsForCounts(b, inputBytes, chars)
+		})
+	})
+}
+
+func benchmarkReportUTF8DecodeCore(b *testing.B, name, text string) {
+	inputBytes, chars := len(text), len([]rune(text))
+	plan, decodedRunes, simdAvailable := simdutf8.NewDecodeSIMDBenchmarkPlan(text)
+	b.Run(name, func(b *testing.B) {
+		b.Run("gosimd", func(b *testing.B) {
+			if simdAvailable {
+				out := make([]rune, decodedRunes)
+				reportUTF8MetricsForBytes(b, inputBytes)
+				for b.Loop() {
+					benchRuneSliceSink = simdutf8.DecodeSIMDCoreForBenchmark(text, out, plan)
+				}
+				reportUTF8SizeMetricsForCounts(b, inputBytes, chars)
+				return
+			}
+
+			out := make([]rune, 0, chars)
+			reportUTF8MetricsForBytes(b, inputBytes)
+			for b.Loop() {
+				benchRuneSliceSink = decodeCore(text, out[:0])
+			}
+			reportUTF8SizeMetricsForCounts(b, inputBytes, chars)
+		})
+		b.Run("stdlib", func(b *testing.B) {
+			out := make([]rune, 0, chars)
+			reportUTF8MetricsForBytes(b, inputBytes)
+			for b.Loop() {
+				benchRuneSliceSink = decodeCore(text, out[:0])
+			}
+			reportUTF8SizeMetricsForCounts(b, inputBytes, chars)
+		})
+	})
 }
 
 func reportUTF8Metrics(b *testing.B, data []byte) {
+	reportUTF8MetricsForBytes(b, len(data))
+}
+
+func reportUTF8MetricsForBytes(b *testing.B, inputBytes int) {
 	b.ReportAllocs()
-	b.SetBytes(int64(len(data)))
+	b.SetBytes(int64(inputBytes))
 }
 
 func reportUTF8SizeMetrics(b *testing.B, data []byte) {
-	b.ReportMetric(float64(len(data)), "input_bytes/op")
-	b.ReportMetric(float64(stdutf8.RuneCount(data)), "chars/op")
+	reportUTF8SizeMetricsForCounts(b, len(data), stdutf8.RuneCount(data))
+}
+
+func reportUTF8SizeMetricsForCounts(b *testing.B, inputBytes, chars int) {
+	b.ReportMetric(float64(inputBytes), "input_bytes/op")
+	b.ReportMetric(float64(chars), "chars/op")
 }
 
 // utf8ReportInputs uses a roughly 64 KiB input for every scenario. Multibyte
@@ -407,6 +545,50 @@ func utf8ReportInputs() []struct {
 	return inputs
 }
 
+// utf8ReportRuneInputs gives Encode the same 64 KiB Go-rune input size used by
+// the UTF-16 Encode report. The byte-oriented operations intentionally use
+// utf8ReportInputs instead, so their working set is 64 KiB of UTF-8 bytes.
+func utf8ReportRuneInputs() []struct {
+	name string
+	data []rune
+} {
+	const targetRunes = 64 * 1024 / 4
+	patterns := []struct {
+		name string
+		text string
+	}{
+		{name: "ascii-only", text: "The quick brown fox jumps over the lazy dog. "},
+		{name: "mixed", text: "Go: Hello, Привет, 世界! 😀 "},
+		{name: "russian", text: "Съешь ещё этих мягких французских булок, да выпей чаю. "},
+		{name: "chinese", text: "快速的棕色狐狸跳过懒狗。天地玄黄，宇宙洪荒。"},
+	}
+
+	inputs := make([]struct {
+		name string
+		data []rune
+	}, 0, len(patterns))
+	for _, pattern := range patterns {
+		inputs = append(inputs, struct {
+			name string
+			data []rune
+		}{name: pattern.name, data: repeatUTF8Runes(targetRunes, []rune(pattern.text))})
+	}
+	return inputs
+}
+
+func repeatUTF8Runes(length int, pattern []rune) []rune {
+	data := make([]rune, 0, length)
+	for len(data) < length {
+		remaining := length - len(data)
+		if remaining < len(pattern) {
+			data = append(data, pattern[:remaining]...)
+			break
+		}
+		data = append(data, pattern...)
+	}
+	return data
+}
+
 func repeatUTF8AtLeast(sample string, size int) []byte {
 	data := make([]byte, 0, size+len(sample))
 	for len(data) < size {
@@ -426,6 +608,18 @@ func TestUTF8ReportInputs(t *testing.T) {
 		}
 		if len(input.data) < 64*1024 {
 			t.Fatalf("%s has %d bytes, want at least 64 KiB", input.name, len(input.data))
+		}
+	}
+}
+
+func TestUTF8ReportRuneInputs(t *testing.T) {
+	inputs := utf8ReportRuneInputs()
+	if got, want := len(inputs), 4; got != want {
+		t.Fatalf("benchmark input count = %d, want %d", got, want)
+	}
+	for _, input := range inputs {
+		if got, want := len(input.data), 64*1024/4; got != want {
+			t.Fatalf("%s has %d runes, want %d", input.name, got, want)
 		}
 	}
 }

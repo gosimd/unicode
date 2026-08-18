@@ -20,6 +20,10 @@ import (
 var operationOrder = []string{
 	"utf8.Valid",
 	"utf8.RuneCount",
+	"utf8.Encode-full",
+	"utf8.Encode-core",
+	"utf8.Decode-full",
+	"utf8.Decode-core",
 	"utf16.Encode-full",
 	"utf16.Encode-core",
 	"utf16.Decode-full",
@@ -263,7 +267,12 @@ func median(values []float64) float64 {
 }
 
 func validateCoreAllocations(results map[string]measurement) error {
-	for _, operation := range []string{"utf16.Encode-core", "utf16.Decode-core"} {
+	for _, operation := range []string{
+		"utf8.Encode-core",
+		"utf8.Decode-core",
+		"utf16.Encode-core",
+		"utf16.Decode-core",
+	} {
 		for _, scenario := range scenarioOrder {
 			for _, implementation := range []string{"gosimd", "stdlib"} {
 				result := results[resultKey(operation, scenario, implementation)]
@@ -307,10 +316,10 @@ func renderReport(output io.Writer, info reportInfo) {
 
 	fmt.Fprintln(output, "\n## Workloads")
 	fmt.Fprintln(output, "\nEvery row uses an approximately 64 KiB input working set. `ascii-only` is English ASCII; `mixed` combines English, Russian, Chinese, and emoji; `russian` and `chinese` contain only their named scripts. Repetition ends only at a valid encoding boundary.")
-	fmt.Fprintln(output, "\nFor UTF-8, throughput counts UTF-8 input bytes. For UTF-16 Encode it counts the 4-byte Go `rune` input, and for Decode it counts the 2-byte UTF-16 input, matching the package benchmarks. A character means one decoded Unicode code point. `-full` calls the public API and includes output allocation; `-core` reuses caller-owned output but includes length/planning and conversion work.")
+	fmt.Fprintln(output, "\nFor UTF-8 Valid, RuneCount, and Decode, throughput counts UTF-8 input bytes; UTF-8 Encode counts its 4-byte Go `rune` input. UTF-16 Encode counts the 4-byte Go `rune` input, and Decode counts the 2-byte UTF-16 input, matching the package benchmarks. A character means one decoded Unicode code point. `-full` calls the public API and includes output allocation; `-core` reuses caller-owned output. UTF-8 SIMD core rows measure only the encoder or decoder after their planning pass.")
 
-	renderTable(output, "UTF-8", operationOrder[:2], info.Results)
-	renderTable(output, "UTF-16", operationOrder[2:], info.Results)
+	renderTable(output, "UTF-8", operationOrder[:6], info.Results)
+	renderTable(output, "UTF-16", operationOrder[6:], info.Results)
 
 	fmt.Fprintln(output, "\n## Reproduce")
 	fmt.Fprintf(output, "\n```text\n%s\n```\n", info.Command)
