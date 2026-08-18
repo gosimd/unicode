@@ -148,11 +148,11 @@ widens two groups of four lanes, while AVX2 widens all eight lanes. The AVX2
 surrogate predicate uses `VPMOVMSKB` over an AVX comparison vector; it does
 not use AVX-512 mask registers. AVX-512-capable AMD64 hosts select a separate
 16-code-unit implementation which uses mask registers and a 512-bit
-widen/store. A chunk with any
-surrogate is decoded by the scalar state machine one code unit at a time, so a
-high surrogate at a vector boundary, valid pairs, and malformed sequences have the exact
-`unicode/utf16.Decode` result. Unsupported builds, including amd64 without
-AVX2, delegate to the standard library.
+widen/store. AVX2 additionally recognizes one valid pair in an otherwise
+clean chunk and dense runs of valid pairs. Other surrogate-containing regions
+use the scalar state machine, so pairs at vector boundaries and malformed
+sequences have the exact `unicode/utf16.Decode` result. Unsupported builds,
+including amd64 without AVX2, delegate to the standard library.
 
 The ARM64 NEON clean-chunk loop takes a caller-provided output buffer. It
 checks its capacity once, then uses `unsafe.Add` with fixed-size array SIMD
@@ -161,6 +161,9 @@ the public `Decode` allocation and its standard-library-compatible result.
 When at least 32 code units remain, it probes and widens four 8-unit NEON
 chunks in one unrolled iteration; chunks containing a surrogate continue
 through the existing 8-unit/scalar path.
+
+See [docs/utf16/Decode.md](docs/utf16/Decode.md) for the detailed clean,
+sparse-surrogate, dense-pair, and scalar dataflow.
 
 ## SIMD UTF-16 encoding
 
@@ -183,6 +186,9 @@ BMP input uses checked 16-rune blocks. Surrogate values and invalid runes use
 the scalar fallback with exact `unicode/utf16.Encode` output and result
 capacity. amd64 without AVX2 and all unsupported builds delegate `Encode` to
 the standard library.
+
+See [docs/utf16/Encode.md](docs/utf16/Encode.md) for the detailed planning,
+NEON, AVX2, AVX-512, and scalar paths.
 
 ## SIMD rune counting
 

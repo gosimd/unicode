@@ -55,6 +55,9 @@ exports in `unicode/utf8` are intentionally added here with matching tests;
 `Encode` and `Decode` are intentional extensions. Go does not provide a
 package-wide re-export mechanism.
 
+For implementation details, see [validation](utf8/Valid.md),
+[encoding](utf8/Encode.md), and [decoding](utf8/Decode.md).
+
 ## UTF-16 package
 
 Import:
@@ -77,5 +80,5 @@ Surrogate values and invalid runes use the scalar path, preserving
 delegate to the standard library. Compile-time function-type checks keep the
 compatibility surface synchronized with the standard-library baseline.
 
-For UTF-8 implementation details, see [validation](utf8/Valid.md),
-[encoding](utf8/Encode.md), and [decoding](utf8/Decode.md).
+For implementation details, see [encoding](utf16/Encode.md) and
+[decoding](utf16/Decode.md).

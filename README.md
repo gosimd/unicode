@@ -130,6 +130,8 @@ Source: [full Windows AVX2 report](bench/results-windows-amd64.md).
 - [UTF-8 validation](docs/utf8/Valid.md)
 - [UTF-8 encoding](docs/utf8/Encode.md)
 - [UTF-8 decoding](docs/utf8/Decode.md)
+- [UTF-16 encoding](docs/utf16/Encode.md)
+- [UTF-16 decoding](docs/utf16/Decode.md)
 - [Architecture and implementation notes](ARCHITECTURE.md)
 
 ## Contributing

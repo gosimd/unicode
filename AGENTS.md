@@ -40,6 +40,9 @@ operations on UTF encodings. The first implementation target is UTF-8.
 - Keep ARM64 NEON and amd64 AVX2 predicates separate when their optimal
   instruction sequences differ. amd64 without AVX2 must use the standard
   library fallback.
+- Keep [docs/utf16/Encode.md](docs/utf16/Encode.md) and
+  [docs/utf16/Decode.md](docs/utf16/Decode.md) synchronized with material
+  changes to the UTF-16 planners, SIMD paths, or scalar boundary handling.
 - Runtime CPU feature detection must fall back safely on unsupported machines.
 - Keep unsafe code isolated and justified. Do not use `unsafe` in public-facing
   code unless there is a clear measured need.
