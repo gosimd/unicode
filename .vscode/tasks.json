@@ -4,7 +4,7 @@
     {
       "label": "Go: build",
       "type": "shell",
-      "command": "${env:GOSIMD_GO}",
+      "command": "go",
       "args": ["build", "./..."],
       "group": "build",
       "problemMatcher": ["$go"]
@@ -12,7 +12,7 @@
     {
       "label": "Go: test",
       "type": "shell",
-      "command": "${env:GOSIMD_GO}",
+      "command": "go",
       "args": ["test", "-v", "./..."],
       "group": "test",
       "problemMatcher": ["$go"]
@@ -20,7 +20,7 @@
     {
       "label": "Go: test race",
       "type": "shell",
-      "command": "${env:GOSIMD_GO}",
+      "command": "go",
       "args": ["test", "-race", "./..."],
       "group": "test",
       "problemMatcher": ["$go"]
@@ -28,7 +28,7 @@
     {
       "label": "Go: benchmark",
       "type": "shell",
-      "command": "${env:GOSIMD_GO}",
+      "command": "go",
       "args": ["test", "-run=^$", "-bench=.", "-benchmem", "./..."],
       "group": "test",
       "problemMatcher": ["$go"]
@@ -36,7 +36,7 @@
     {
       "label": "Go: profile benchmark",
       "type": "shell",
-      "command": "${env:GOSIMD_GO}",
+      "command": "go",
       "args": [
         "test",
         "-run=^$",
@@ -54,21 +54,21 @@
     {
       "label": "Go: pprof CPU",
       "type": "shell",
-      "command": "${env:GOSIMD_GO}",
+      "command": "go",
       "args": ["tool", "pprof", "-http=:0", "../.profiles/cpu.out"],
       "problemMatcher": []
     },
     {
       "label": "Go: pprof memory",
       "type": "shell",
-      "command": "${env:GOSIMD_GO}",
+      "command": "go",
       "args": ["tool", "pprof", "-http=:0", "../.profiles/mem.out"],
       "problemMatcher": []
     },
     {
       "label": "Go: build UTF-8 test binary (SIMD)",
       "type": "shell",
-      "command": "${env:GOSIMD_GO}",
+      "command": "go",
       "args": [
         "test",
         "-c",
@@ -90,7 +90,7 @@
       "args": [
         "-u",
         "GOCACHE",
-        "${env:GOSIMD_GO}",
+        "go",
         "tool",
         "objdump",
         "-S",

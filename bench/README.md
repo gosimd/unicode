@@ -58,7 +58,7 @@ directly:
 
 ```powershell
 $env:GOEXPERIMENT = 'simd'
-& $env:GOSIMD_GO run .\cmd\benchreport -count 5 -benchtime 1s -output bench\windows-i3-8100t.md
+& go run .\cmd\benchreport -count 5 -benchtime 1s -output bench\windows-i3-8100t.md
 ```
 
 The generator runs the UTF-8 and UTF-16 packages sequentially so their
