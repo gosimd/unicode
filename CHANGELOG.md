@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.1.1] - 2026-08-20
+
+### Changed
+
+- Updated the project's minimum Go version to Go 1.27.
+
+### Documentation
+
+- Updated the public UTF-8 and UTF-16 package descriptions to highlight SIMD
+  acceleration, supported configurations, and benchmark context.
+
 ## [0.1.0] - 2026-08-19
 
 ### Added
@@ -15,4 +26,5 @@ All notable changes to this project are documented in this file.
   fallbacks for other configurations.
 - API, implementation, benchmark, and compatibility documentation.
 
+[0.1.1]: https://github.com/gosimd/unicode/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/gosimd/unicode/releases/tag/v0.1.0
