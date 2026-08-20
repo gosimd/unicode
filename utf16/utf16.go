@@ -1,8 +1,11 @@
-// Package utf16 implements UTF-16 encoding and decoding.
+// Package utf16 provides SIMD-accelerated UTF-16 encoding and decoding for Go.
 //
 // It is API-compatible with the Go standard library's unicode/utf16 package.
-// Whole-buffer Decode and Encode use SIMD on supported builds; all other
-// operations delegate to the standard library.
+// Whole-buffer Encode and Decode use SIMD on supported ARM64 and AMD64
+// configurations, giving substantial speedups on representative workloads.
+// Results depend on the input shape, CPU, and build configuration; unsupported
+// configurations use the standard-library implementation with the same
+// behaviour.
 package utf16
 
 import (

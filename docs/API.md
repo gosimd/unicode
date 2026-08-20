@@ -14,6 +14,11 @@ repository's Go 1.27rc1 baseline, `unicode/utf8`, and adds whole-buffer
 syntax. The SIMD implementation is an internal detail: results never depend on
 CPU architecture or build flags.
 
+On supported ARM64 and AMD64 configurations, the whole-buffer operations use
+SIMD. Selected 64 KiB workloads have measured 5× to 25× speedups over the Go
+standard library; the result depends on the operation, input shape, CPU, and
+build configuration. See the reproducible reports in [`bench/`](../bench/).
+
 | Kind | Names |
 | --- | --- |
 | Constants | `RuneError`, `RuneSelf`, `MaxRune`, `UTFMax` |
@@ -79,6 +84,10 @@ Surrogate values and invalid runes use the scalar path, preserving
 `unicode/utf16.Encode` semantics and result capacity. Unsupported builds
 delegate to the standard library. Compile-time function-type checks keep the
 compatibility surface synchronized with the standard-library baseline.
+
+On supported configurations, the whole-buffer paths are SIMD-accelerated;
+speedups depend on the operation, input shape, CPU, and build configuration.
+See the reproducible reports in [`bench/`](../bench/).
 
 For implementation details, see [encoding](utf16/Encode.md) and
 [decoding](utf16/Decode.md).

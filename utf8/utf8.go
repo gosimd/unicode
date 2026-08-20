@@ -1,5 +1,12 @@
-// Package utf8 implements functions and constants to support text encoded in
-// UTF-8.
+// Package utf8 provides SIMD-accelerated UTF-8 validation, rune counting, and
+// conversion for Go.
+//
+// On supported ARM64 and AMD64 configurations, whole-buffer operations use
+// SIMD to provide substantial speedups over the Go standard library. In
+// representative 64 KiB benchmarks, selected workloads achieve 5x to 25x
+// speedups. Results depend on the operation, input shape, CPU, and build
+// configuration; unsupported configurations use a portable fallback with the
+// same behaviour.
 package utf8
 
 import (
